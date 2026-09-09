@@ -220,7 +220,12 @@ release-check: ten gates, all green
 ```
 
 Identical output in the fresh clone. Gates in the order the brief gave, first red stops the run
-and prints the last 30 lines of that gate's output with the command that produced it.
+and prints the last 30 lines of that gate's output with the command that produced it. The two
+gates that produce results write to a temporary directory, so running the whole thing leaves the
+tree untouched — the first version wrote into `results/<today>/` and left four modified files
+behind, which is a checklist that trains you to `git checkout --` after running it, and the next
+thing discarded by hand is something that mattered. Regenerating the committed results is a
+deliberate step (`make reproduce`), not a side effect of checking them.
 
 **The former-name gate matched itself.** As first written, `! git grep -i -q <name>` put the
 name in the `Makefile`, so the gate failed on its own text — and `design-notes/build-report-2.md`

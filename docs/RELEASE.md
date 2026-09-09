@@ -16,8 +16,11 @@ make release-check
 Ten gates, one line each, first red stops the run: the conformance suite, the results, byte
 determinism, the contamination simulation, lint, the standard-library gate over
 `systems/reference/`, the model-import grep, the former-name grep, the README matrix, and every
-relative link in `README.md`, `CONTRIBUTING.md` and `docs/`. If a gate is red, it is red for the
-release too — there is no such thing as a known-red gate here.
+relative link in `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` and `docs/`. If a gate is red, it
+is red for the release too — there is no such thing as a known-red gate here.
+
+Running it leaves the tree exactly as it was: the two gates that produce results write to a
+temporary directory. Regenerating what is committed is step 2, on purpose.
 
 ## 2. The results are regenerated from the tree being tagged
 
