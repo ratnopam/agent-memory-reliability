@@ -1,0 +1,32 @@
+# A conformance adapter is an ordinary Python distribution. Three lines in this file are
+# what the suite actually reads: the name, and the two halves of the entry point.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amr-adapter-example"
+version = "0.1.0"
+description = "A worked example of an amr.systems conformance adapter, over a dict"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+
+# Deliberately empty. `agent-memory-reliability` is not on an index yet, and the copy you
+# are being measured against is the checkout you cloned, so install that one from its own
+# directory rather than letting this file pin a version of it:
+#
+#   python -m pip install -e path/to/agent-memory-reliability
+#   python -m pip install -e .
+dependencies = []
+
+# The one line that makes this package discoverable. `amr.systems` is the group; the key is
+# the name the suite reports results under and the name `SYSTEMS=` selects by; the value is
+# `module:attribute`, a callable that returns a system. See src/amr/registry.py.
+[project.entry-points."amr.systems"]
+amr-adapter-example = "amr_adapter_example:factory"
+
+[tool.setuptools]
+packages = ["amr_adapter_example"]
+
+[tool.setuptools.package-dir]
+amr_adapter_example = "src/amr_adapter_example"
