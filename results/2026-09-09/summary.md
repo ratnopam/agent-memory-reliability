@@ -1,8 +1,8 @@
 # Conformance results
 
-Generated 2026-09-09T13:29:39+00:00 · schema 0.1 · commit `8cf7735e141963b91775a896d4e74bc015577d75` · Python 3.14.6 on darwin · pytest 9.1.1.
+Generated 2026-09-09T17:57:56+00:00 · schema 0.1 · commit `db9af089d4aad3c8b2a90eae390d258db6593118` · Python 3.14.6 on darwin · pytest 9.1.1.
 
-82 tests: 81 PASS, 0 FAIL, 1 DIVERGENCE.
+91 tests: 90 PASS, 0 FAIL, 1 DIVERGENCE.
 
 ## reference 0.1.0
 
@@ -10,12 +10,13 @@ Declared: forget modes cascade, erase, tombstone; default `tombstone`; empty cha
 
 | Check | Scenario | tombstone | cascade | erase |
 |---|---|---|---|---|
-| P1.1 | Write a cycle-forming record | PASS | PASS | PASS |
+| P1.1 | Write citing an id that has not been assigned | PASS | PASS | PASS |
 | P1.2 | Three-hop chain, walk from leaf | PASS | PASS | PASS |
 | P1.3 | Diamond graph, walk from sink | PASS | PASS | PASS |
 | P1.4 | Walk after an ancestor is forgotten | PASS | PASS | PASS |
 | P1.5 | Walk after store reopen | PASS | PASS | PASS |
 | P1.6 | Write citing an unresolvable source id | PASS | PASS | PASS |
+| P1.7 | Deserialise a store containing a cycle | PASS | PASS | PASS |
 | P2.1 | Chain 0.4 → 0.9, read leaf | PASS | PASS | PASS |
 | P2.2 | Revise root 0.9 → 0.2, read leaf | PASS | PASS | PASS |
 | P2.3 | Diamond with one weak ancestor | PASS | PASS | PASS |
@@ -32,9 +33,9 @@ Declared: forget modes cascade, erase, tombstone; default `tombstone`; empty cha
 | P4.2 | Grant, read, revoke, read | PASS | PASS | PASS |
 | P4.3 | Cross-scope derivation, walk from B | PASS | PASS | PASS |
 | P4.4 | Forget in A with descendants in B | PASS | PASS | PASS |
-| P4.5 | Concurrent interleaved writes | PASS | PASS | PASS |
+| P4.5 | Replay a fixed set of interleaved write schedules, each a valid topological order of one plan | PASS | PASS | PASS |
 
-Beyond the numbered checks: 7 supplementary checks (mode-independent properties, random-DAG agreement with the reference arithmetic, taxonomy reproductions) and 6 meta checks (one test per specification check id, taxonomy entries matching the code they embed). Both are counted in the totals above.
+Beyond the numbered checks: 13 supplementary checks (mode-independent properties, random-DAG agreement with the reference arithmetic, taxonomy reproductions) and 6 meta checks (one test per specification check id, taxonomy entries matching the code they embed). Both are counted in the totals above.
 
 ## Failures
 
@@ -55,3 +56,12 @@ A divergence is behaviour the specification leaves open, in a system whose capab
 | P3 — Forget operations | PASS | PASS | PASS |
 | P4 — Isolation when agents share state | PASS | PASS | PASS |
 | **P2.5 — Forget weakest ancestor, re-read leaf** | **PASS** | **PASS** | **DIVERGENCE** |
+
+## Contamination
+
+Seed 7, 12 rounds, three roles, tau 0.5. One belief declared 0.4 was injected in round 1.
+
+| arm | writes | inherited | inflated (declared ≥ 0.9, effective ≤ tau) | depth |
+| --- | --- | --- | --- | --- |
+| ungated | 36 | 17 (47%) | 8 (22%) | 6 |
+| gated | 36 | 0 (0%) | 0 (0%) | 0 |

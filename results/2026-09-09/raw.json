@@ -1,12 +1,12 @@
 {
   "environment": {
-    "git_sha": "8cf7735e141963b91775a896d4e74bc015577d75",
+    "git_sha": "db9af089d4aad3c8b2a90eae390d258db6593118",
     "platform": "darwin",
     "pytest_version": "9.1.1",
     "python_implementation": "CPython",
     "python_version": "3.14.6"
   },
-  "generated_at": "2026-09-09T13:29:39+00:00",
+  "generated_at": "2026-09-09T17:57:56+00:00",
   "missing_checks": [],
   "runs": [
     {
@@ -17,8 +17,8 @@
         "empty_chain_convention": 1.0,
         "notes": [
           "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
-          "A write may only cite sources the writing scope can read.",
-          "revise and forget require ownership of the record, not a read grant."
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises LookupError, exactly as an unassigned id would."
         ],
         "revision": "logged",
         "revision_raise_supported": true,
@@ -34,9 +34,9 @@
       "checks": [
         {
           "check": "P1.1",
-          "detail": "P1.1 | Write a cycle-forming record | Rejected",
-          "name": "test_p1_1_cycle_rejected[reference-tombstone]",
-          "nodeid": "properties/test_p1_provenance.py::test_p1_1_cycle_rejected[reference-tombstone]",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-tombstone]",
           "outcome": "PASS"
         },
         {
@@ -72,6 +72,13 @@
           "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
           "name": "test_p1_6_unresolvable_source_rejected[reference-tombstone]",
           "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-tombstone]",
           "outcome": "PASS"
         },
         {
@@ -195,7 +202,15 @@
         }
       ],
       "forget_mode": "tombstone",
-      "supplementary": [],
+      "supplementary": [
+        {
+          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
+          "extra": "grant-conveys-reading-only",
+          "name": "test_grant_conveys_reading_only[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-tombstone]",
+          "outcome": "PASS"
+        }
+      ],
       "system": "reference",
       "system_version": "0.1.0"
     },
@@ -207,8 +222,8 @@
         "empty_chain_convention": 1.0,
         "notes": [
           "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
-          "A write may only cite sources the writing scope can read.",
-          "revise and forget require ownership of the record, not a read grant."
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises LookupError, exactly as an unassigned id would."
         ],
         "revision": "logged",
         "revision_raise_supported": true,
@@ -224,9 +239,9 @@
       "checks": [
         {
           "check": "P1.1",
-          "detail": "P1.1 | Write a cycle-forming record | Rejected",
-          "name": "test_p1_1_cycle_rejected[reference-cascade]",
-          "nodeid": "properties/test_p1_provenance.py::test_p1_1_cycle_rejected[reference-cascade]",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-cascade]",
           "outcome": "PASS"
         },
         {
@@ -262,6 +277,13 @@
           "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
           "name": "test_p1_6_unresolvable_source_rejected[reference-cascade]",
           "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-cascade]",
           "outcome": "PASS"
         },
         {
@@ -385,7 +407,15 @@
         }
       ],
       "forget_mode": "cascade",
-      "supplementary": [],
+      "supplementary": [
+        {
+          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
+          "extra": "grant-conveys-reading-only",
+          "name": "test_grant_conveys_reading_only[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-cascade]",
+          "outcome": "PASS"
+        }
+      ],
       "system": "reference",
       "system_version": "0.1.0"
     },
@@ -397,8 +427,8 @@
         "empty_chain_convention": 1.0,
         "notes": [
           "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
-          "A write may only cite sources the writing scope can read.",
-          "revise and forget require ownership of the record, not a read grant."
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises LookupError, exactly as an unassigned id would."
         ],
         "revision": "logged",
         "revision_raise_supported": true,
@@ -414,9 +444,9 @@
       "checks": [
         {
           "check": "P1.1",
-          "detail": "P1.1 | Write a cycle-forming record | Rejected",
-          "name": "test_p1_1_cycle_rejected[reference-erase]",
-          "nodeid": "properties/test_p1_provenance.py::test_p1_1_cycle_rejected[reference-erase]",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-erase]",
           "outcome": "PASS"
         },
         {
@@ -452,6 +482,13 @@
           "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
           "name": "test_p1_6_unresolvable_source_rejected[reference-erase]",
           "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-erase]",
           "outcome": "PASS"
         },
         {
@@ -582,7 +619,15 @@
         }
       ],
       "forget_mode": "erase",
-      "supplementary": [],
+      "supplementary": [
+        {
+          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
+          "extra": "grant-conveys-reading-only",
+          "name": "test_grant_conveys_reading_only[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-erase]",
+          "outcome": "PASS"
+        }
+      ],
       "system": "reference",
       "system_version": "0.1.0"
     }
@@ -596,6 +641,7 @@
       "P1.4",
       "P1.5",
       "P1.6",
+      "P1.7",
       "P2.1",
       "P2.2",
       "P2.3",
@@ -614,14 +660,35 @@
       "P4.4",
       "P4.5"
     ],
-    "path": "version1/SPEC.md"
+    "path": "version2/SPEC.md"
   },
   "suite_checks": [
+    {
+      "detail": "One name, one registration: the declared install wins, and nothing is listed twice.",
+      "extra": "entry-point-deduplication",
+      "name": "test_an_entry_point_wins_over_an_in_tree_package_of_the_same_name",
+      "nodeid": "properties/test_registry.py::test_an_entry_point_wins_over_an_in_tree_package_of_the_same_name",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A package declaring amr.systems is found with no edit to this repository.",
+      "extra": "entry-point-discovery",
+      "name": "test_an_external_distribution_is_discovered",
+      "nodeid": "properties/test_registry.py::test_an_external_distribution_is_discovered",
+      "outcome": "PASS"
+    },
     {
       "detail": "I2.4: the same diamond built in two orders yields the same numbers.",
       "extra": "insertion-order-independence",
       "name": "test_effective_confidence_is_insertion_order_independent[reference]",
       "nodeid": "properties/test_p2_confidence.py::test_effective_confidence_is_insertion_order_independent[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Erasing the weakest ancestor raises the descendant. SPEC.md 6.4.",
+      "extra": "example-erasure-inflation",
+      "name": "test_erasure_inflation_prints_three_comparable_numbers",
+      "nodeid": "properties/test_examples.py::test_erasure_inflation_prints_three_comparable_numbers",
       "outcome": "PASS"
     },
     {
@@ -632,7 +699,7 @@
       "outcome": "PASS"
     },
     {
-      "detail": "The 23 numbered checks map one-to-one onto marked test functions.",
+      "detail": "The 24 numbered checks map one-to-one onto marked test functions.",
       "name": "test_every_spec_check_has_exactly_one_test",
       "nodeid": "properties/test_spec_coverage.py::test_every_spec_check_has_exactly_one_test",
       "outcome": "PASS"
@@ -706,7 +773,7 @@
   "totals": {
     "DIVERGENCE": 1,
     "FAIL": 0,
-    "PASS": 81,
-    "tests": 82
+    "PASS": 90,
+    "tests": 91
   }
 }
