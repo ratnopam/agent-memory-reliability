@@ -1,25 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="560" height="380" viewBox="0 0 560 380" role="img" aria-label="contamination: inherited fraction by arm">
-<title>contamination: inherited fraction by arm</title>
-<rect x="0" y="0" width="560" height="380" rx="0" fill="#ffffff"/>
-<text x="48" y="34" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" fill="#12181f" text-anchor="start" font-weight="bold">Writes inheriting the low-confidence belief</text>
-<text x="48" y="54" font-family="'DejaVu Sans Mono',Menlo,Consolas,monospace" font-size="12" fill="#5c6773" text-anchor="start" font-weight="normal">reference · seed 7 · 12 rounds · three roles · tau 0.5</text>
-<line x1="90" y1="300" x2="520" y2="300" stroke="#d7dde4" stroke-width="1"/>
-<text x="80" y="304" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">0%</text>
-<line x1="90" y1="242.5" x2="520" y2="242.5" stroke="#d7dde4" stroke-width="1"/>
-<text x="80" y="246.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">25%</text>
-<line x1="90" y1="185" x2="520" y2="185" stroke="#d7dde4" stroke-width="1"/>
-<text x="80" y="189" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">50%</text>
-<line x1="90" y1="127.5" x2="520" y2="127.5" stroke="#d7dde4" stroke-width="1"/>
-<text x="80" y="131.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">75%</text>
-<line x1="90" y1="70" x2="520" y2="70" stroke="#d7dde4" stroke-width="1"/>
-<text x="80" y="74" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">100%</text>
-<rect x="130" y="191.39" width="110" height="108.61" rx="3" fill="#a11d2b"/>
-<text x="185" y="215.39" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="16" fill="#ffffff" text-anchor="middle" font-weight="bold">47%</text>
-<text x="185" y="322" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="14" fill="#12181f" text-anchor="middle" font-weight="bold">ungated</text>
-<text x="185" y="340" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="middle" font-weight="normal">17 of 36 writes</text>
-<text x="335" y="292" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="16" fill="#12181f" text-anchor="middle" font-weight="bold">0%</text>
-<text x="335" y="322" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="14" fill="#12181f" text-anchor="middle" font-weight="bold">gated</text>
-<text x="335" y="340" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="middle" font-weight="normal">0 of 36 writes</text>
-<line x1="90" y1="300" x2="520" y2="300" stroke="#12181f" stroke-width="1"/>
-<text x="48" y="364" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="start" font-weight="normal">gated: a source whose effective confidence is below 0.5 may be read, not cited.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="412" viewBox="0 0 880 412" role="img" aria-label="contamination: two metrics, three arms">
+<title>contamination: two metrics, three arms</title>
+<rect x="0" y="0" width="880" height="412" rx="0" fill="#ffffff"/>
+<text x="48" y="36" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="19" fill="#12181f" text-anchor="start" font-weight="bold">How far one low-confidence belief travels</text>
+<text x="48" y="58" font-family="'DejaVu Sans Mono',Menlo,Consolas,monospace" font-size="12" fill="#5c6773" text-anchor="start" font-weight="normal">reference · seed 7 · 60 rounds · three roles · tau 0.5</text>
+<text x="48" y="84" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="start" font-weight="normal">gated is zero by construction at tau=0.5: the injected belief and every descendant are bounded at 0.40 and</text>
+<text x="48" y="100" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="start" font-weight="normal">cannot be cited. The gated bar demonstrates the boundary; the surfaced bar measures what visibility alone achieves.</text>
+<text x="96" y="116" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="start" font-weight="bold">Inherited the 0.40 belief</text>
+<line x1="96" y1="360" x2="416" y2="360" stroke="#d7dde4" stroke-width="1"/>
+<text x="86" y="364" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">0%</text>
+<line x1="96" y1="302.5" x2="416" y2="302.5" stroke="#d7dde4" stroke-width="1"/>
+<text x="86" y="306.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">25%</text>
+<line x1="96" y1="245" x2="416" y2="245" stroke="#d7dde4" stroke-width="1"/>
+<text x="86" y="249" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">50%</text>
+<line x1="96" y1="187.5" x2="416" y2="187.5" stroke="#d7dde4" stroke-width="1"/>
+<text x="86" y="191.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">75%</text>
+<line x1="96" y1="130" x2="416" y2="130" stroke="#d7dde4" stroke-width="1"/>
+<text x="86" y="134" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">100%</text>
+<rect x="112" y="248.84" width="74" height="111.16" rx="3" fill="#a11d2b"/>
+<text x="149" y="270.84" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="bold">48%</text>
+<text x="149" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">ungated</text>
+<text x="149" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">87 of 180</text>
+<rect x="208" y="348.5" width="74" height="11.5" rx="3" fill="#b3541e"/>
+<text x="245" y="340.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#12181f" text-anchor="middle" font-weight="bold">5%</text>
+<text x="245" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">surfaced</text>
+<text x="245" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">9 of 180</text>
+<text x="341" y="352" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#12181f" text-anchor="middle" font-weight="bold">0%</text>
+<text x="341" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">gated</text>
+<text x="341" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">0 of 180</text>
+<line x1="96" y1="360" x2="416" y2="360" stroke="#12181f" stroke-width="1"/>
+<text x="528" y="116" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="start" font-weight="bold">Declared ≥ 0.9, effective ≤ tau</text>
+<line x1="528" y1="360" x2="848" y2="360" stroke="#d7dde4" stroke-width="1"/>
+<text x="518" y="364" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">0%</text>
+<line x1="528" y1="302.5" x2="848" y2="302.5" stroke="#d7dde4" stroke-width="1"/>
+<text x="518" y="306.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">25%</text>
+<line x1="528" y1="245" x2="848" y2="245" stroke="#d7dde4" stroke-width="1"/>
+<text x="518" y="249" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">50%</text>
+<line x1="528" y1="187.5" x2="848" y2="187.5" stroke="#d7dde4" stroke-width="1"/>
+<text x="518" y="191.5" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">75%</text>
+<line x1="528" y1="130" x2="848" y2="130" stroke="#d7dde4" stroke-width="1"/>
+<text x="518" y="134" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="11" fill="#5c6773" text-anchor="end" font-weight="normal">100%</text>
+<rect x="544" y="303.79" width="74" height="56.21" rx="3" fill="#a11d2b"/>
+<text x="581" y="325.79" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="bold">24%</text>
+<text x="581" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">ungated</text>
+<text x="581" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">44 of 180</text>
+<rect x="640" y="349.79" width="74" height="10.21" rx="3" fill="#b3541e"/>
+<text x="677" y="341.79" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#12181f" text-anchor="middle" font-weight="bold">4%</text>
+<text x="677" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">surfaced</text>
+<text x="677" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">8 of 180</text>
+<text x="773" y="352" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#12181f" text-anchor="middle" font-weight="bold">0%</text>
+<text x="773" y="382" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="13" fill="#12181f" text-anchor="middle" font-weight="bold">gated</text>
+<text x="773" y="398" font-family="'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="10" fill="#5c6773" text-anchor="middle" font-weight="normal">0 of 180</text>
+<line x1="528" y1="360" x2="848" y2="360" stroke="#12181f" stroke-width="1"/>
 </svg>
