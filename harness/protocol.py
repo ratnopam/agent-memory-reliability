@@ -46,6 +46,35 @@ class ScopeError(Exception):
     """Raised on an unauthorised cross-scope access. See SPEC.md I4.1."""
 
 
+class UnresolvedSourceError(Exception):
+    """Raised when a write cites a source that does not resolve. See SPEC.md I1.6.
+
+    Distinct from ``CycleError`` because the two rejections are different checks
+    (P1.1 and P1.6) and a caller repairs them differently.
+    """
+
+
+class ForgottenRecordError(Exception):
+    """Raised when an operation targets a record that has been forgotten.
+
+    ``get`` reports this state as ``ReadOutcome.FORGOTTEN`` rather than raising
+    (SPEC.md I3.1). Operations that would change or walk a record that no longer
+    exists -- ``revise``, ``provenance`` on a cascaded record -- raise instead, so
+    that a caller cannot mistake a forgotten record for a fresh one.
+    """
+
+
+@dataclass(frozen=True)
+class Origin:
+    """What an external root refers to. See SPEC.md 2.1.
+
+    Descriptive only: ``kind`` and ``ref`` never affect the arithmetic in SPEC.md 5.
+    """
+
+    kind: str
+    ref: str
+
+
 @dataclass(frozen=True)
 class Record:
     id: MemoryId
@@ -53,6 +82,7 @@ class Record:
     declared_confidence: float
     sources: frozenset[MemoryId] = frozenset()
     scope: Scope = "default"
+    origin: Origin | None = None
 
 
 @dataclass(frozen=True)
@@ -122,6 +152,12 @@ class ForgetReceipt:
     forgotten: frozenset[MemoryId]
     tombstoned: frozenset[MemoryId] = frozenset()
     deltas: tuple[ConfidenceDelta, ...] = ()
+    affected_scopes: tuple[tuple[MemoryId, Scope], ...] = ()
+    """Scope of every id named by this receipt, sorted by id.
+
+    A cascade crossing a scope boundary is one receipt, not two (SPEC.md I4.4), so
+    the receipt has to say which side of the boundary each affected id was on.
+    """
 
 
 @dataclass(frozen=True)
@@ -147,7 +183,13 @@ class Capabilities:
 
 @runtime_checkable
 class MemorySystem(Protocol):
-    """The seven operations conformance is defined against. SPEC.md 3."""
+    """The operations conformance is defined against. SPEC.md 3.
+
+    The eight operations of SPEC.md 3, plus ``capabilities`` and ``revisions``.
+    ``revisions`` is the reader for the history I2.6 requires to be retrievable
+    after the fact; SPEC.md 3 lists the writer (``revise``) but no reader, so P2.6
+    cannot be checked without it. See design-notes/spec-feedback.md.
+    """
 
     def capabilities(self) -> Capabilities:
         ...
@@ -158,8 +200,14 @@ class MemorySystem(Protocol):
         declared_confidence: float,
         sources: Iterable[MemoryId] = (),
         scope: Scope = "default",
+        origin: Origin | None = None,
     ) -> MemoryId:
-        """Raises CycleError if ``sources`` would close a cycle (I1.1)."""
+        """Raises CycleError if ``sources`` would close a cycle (I1.1).
+
+        Raises UnresolvedSourceError if any id in ``sources`` does not resolve, and
+        persists nothing in that case (I1.6). ``origin`` is descriptive metadata for
+        a root that stands in for something outside the store (SPEC.md 2.1).
+        """
 
     def get(self, memory_id: MemoryId, scope: Scope = "default") -> ReadResult:
         ...
@@ -189,7 +237,14 @@ class MemorySystem(Protocol):
         Lowering propagates to descendants; raising does not lift them past their
         own declared values (I2.7). Raising is optional and declared in
         ``Capabilities.revision_raise_supported``.
+
+        Raises ForgottenRecordError if ``memory_id`` has been forgotten.
         """
+
+    def revisions(
+        self, memory_id: MemoryId, scope: Scope = "default"
+    ) -> tuple[RevisionReceipt, ...]:
+        """Every revision of ``memory_id``, oldest first. See SPEC.md I2.6."""
 
     def forget(
         self,
