@@ -1,12 +1,12 @@
 {
   "environment": {
-    "git_sha": "db9af089d4aad3c8b2a90eae390d258db6593118",
+    "git_sha": "d282bb8ea497a2469cbcac0c122bc6ccb815a67d",
     "platform": "darwin",
     "pytest_version": "9.1.1",
     "python_implementation": "CPython",
     "python_version": "3.14.6"
   },
-  "generated_at": "2026-09-09T17:57:56+00:00",
+  "generated_at": "2026-09-09T21:50:44+00:00",
   "missing_checks": [],
   "runs": [
     {
@@ -131,6 +131,13 @@
           "outcome": "PASS"
         },
         {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
           "check": "P3.1",
           "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
           "name": "test_p3_1_forgotten_is_not_not_found[reference-tombstone]",
@@ -199,18 +206,17 @@
           "name": "test_p4_5_interleaved_writes[reference-tombstone]",
           "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-tombstone]",
           "outcome": "PASS"
-        }
-      ],
-      "forget_mode": "tombstone",
-      "supplementary": [
+        },
         {
-          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
-          "extra": "grant-conveys-reading-only",
-          "name": "test_grant_conveys_reading_only[reference-tombstone]",
-          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-tombstone]",
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-tombstone]",
           "outcome": "PASS"
         }
       ],
+      "forget_mode": "tombstone",
+      "supplementary": [],
       "system": "reference",
       "system_version": "0.1.0"
     },
@@ -336,6 +342,13 @@
           "outcome": "PASS"
         },
         {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
           "check": "P3.1",
           "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
           "name": "test_p3_1_forgotten_is_not_not_found[reference-cascade]",
@@ -404,18 +417,17 @@
           "name": "test_p4_5_interleaved_writes[reference-cascade]",
           "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-cascade]",
           "outcome": "PASS"
-        }
-      ],
-      "forget_mode": "cascade",
-      "supplementary": [
+        },
         {
-          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
-          "extra": "grant-conveys-reading-only",
-          "name": "test_grant_conveys_reading_only[reference-cascade]",
-          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-cascade]",
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-cascade]",
           "outcome": "PASS"
         }
       ],
+      "forget_mode": "cascade",
+      "supplementary": [],
       "system": "reference",
       "system_version": "0.1.0"
     },
@@ -548,6 +560,13 @@
           "outcome": "PASS"
         },
         {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
           "check": "P3.1",
           "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
           "name": "test_p3_1_forgotten_is_not_not_found[reference-erase]",
@@ -616,18 +635,17 @@
           "name": "test_p4_5_interleaved_writes[reference-erase]",
           "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-erase]",
           "outcome": "PASS"
-        }
-      ],
-      "forget_mode": "erase",
-      "supplementary": [
+        },
         {
-          "detail": "A read grant is a read grant: the reader cannot revise or forget what it can see.",
-          "extra": "grant-conveys-reading-only",
-          "name": "test_grant_conveys_reading_only[reference-erase]",
-          "nodeid": "properties/test_p4_isolation.py::test_grant_conveys_reading_only[reference-erase]",
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-erase]",
           "outcome": "PASS"
         }
       ],
+      "forget_mode": "erase",
+      "supplementary": [],
       "system": "reference",
       "system_version": "0.1.0"
     }
@@ -649,6 +667,7 @@
       "P2.5",
       "P2.6",
       "P2.7",
+      "P2.8",
       "P3.1",
       "P3.2",
       "P3.3",
@@ -658,7 +677,8 @@
       "P4.2",
       "P4.3",
       "P4.4",
-      "P4.5"
+      "P4.5",
+      "P4.6"
     ],
     "path": "version2/SPEC.md"
   },
@@ -699,7 +719,7 @@
       "outcome": "PASS"
     },
     {
-      "detail": "The 24 numbered checks map one-to-one onto marked test functions.",
+      "detail": "The 26 numbered checks map one-to-one onto marked test functions.",
       "name": "test_every_spec_check_has_exactly_one_test",
       "nodeid": "properties/test_spec_coverage.py::test_every_spec_check_has_exactly_one_test",
       "outcome": "PASS"
@@ -763,6 +783,27 @@
       "outcome": "PASS"
     },
     {
+      "detail": "Every numbered check is reported, and the red ones are the declared three.",
+      "extra": "external-adapter-matrix",
+      "name": "test_the_example_fails_exactly_what_its_declaration_predicts",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_example_fails_exactly_what_its_declaration_predicts",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "No edit to this repository names the example: the entry point is the whole link.",
+      "extra": "external-adapter-discovered",
+      "name": "test_the_example_is_discovered_by_its_entry_point_alone",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_example_is_discovered_by_its_entry_point_alone",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A mode it did not declare does not become a check it is excused from.",
+      "extra": "external-adapter-skips-are-failures",
+      "name": "test_the_examples_skipped_reproductions_are_counted_as_failures",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_examples_skipped_reproductions_are_counted_as_failures",
+      "outcome": "PASS"
+    },
+    {
       "detail": "taxonomy/undeclared-derivation.md: no check at this boundary can catch it.",
       "extra": "taxonomy-undeclared-derivation",
       "name": "test_undeclared_derivation_is_out_of_scope[reference]",
@@ -773,7 +814,7 @@
   "totals": {
     "DIVERGENCE": 1,
     "FAIL": 0,
-    "PASS": 90,
-    "tests": 91
+    "PASS": 96,
+    "tests": 97
   }
 }

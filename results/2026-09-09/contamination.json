@@ -2,41 +2,61 @@
   "arms": {
     "gated": {
       "arm": "gated",
-      "denominator": 36,
+      "denominator": 180,
       "gated": true,
       "inflated_count": 0,
       "inflated_fraction": 0.0,
       "inherited_count": 0,
       "inherited_fraction": 0.0,
       "max_chain_depth": 0,
+      "surfaced": false,
       "totals": {
         "abstentions": 0,
-        "reads": 144,
-        "rounds": 12,
-        "strict_write_rejections": 4,
-        "writes": 36
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 23,
+        "writes": 180
+      }
+    },
+    "surfaced": {
+      "arm": "surfaced",
+      "denominator": 180,
+      "gated": false,
+      "inflated_count": 8,
+      "inflated_fraction": 0.0444,
+      "inherited_count": 9,
+      "inherited_fraction": 0.05,
+      "max_chain_depth": 3,
+      "surfaced": true,
+      "totals": {
+        "abstentions": 0,
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 27,
+        "writes": 180
       }
     },
     "ungated": {
       "arm": "ungated",
-      "denominator": 36,
+      "denominator": 180,
       "gated": false,
-      "inflated_count": 8,
-      "inflated_fraction": 0.2222,
-      "inherited_count": 17,
-      "inherited_fraction": 0.4722,
-      "max_chain_depth": 6,
+      "inflated_count": 44,
+      "inflated_fraction": 0.2444,
+      "inherited_count": 87,
+      "inherited_fraction": 0.4833,
+      "max_chain_depth": 9,
+      "surfaced": false,
       "totals": {
         "abstentions": 0,
-        "reads": 144,
-        "rounds": 12,
-        "strict_write_rejections": 3,
-        "writes": 36
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 21,
+        "writes": 180
       }
     }
   },
   "environment": {
-    "git_sha": "db9af089d4aad3c8b2a90eae390d258db6593118",
+    "git_sha": "d282bb8ea497a2469cbcac0c122bc6ccb815a67d",
     "platform": "darwin",
     "pytest_version": "9.1.1",
     "python_implementation": "CPython",
@@ -83,7 +103,7 @@
       "sre",
       "platform"
     ],
-    "rounds": 12,
+    "rounds": 60,
     "tau": 0.5
   },
   "scenario": "contamination",
