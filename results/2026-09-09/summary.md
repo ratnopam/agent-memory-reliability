@@ -1,6 +1,6 @@
 # Conformance results
 
-Generated 2026-09-09T01:59:39+00:00 · schema 0.1 · commit `e665b7f55ca1260e83c4386fd9382b3075531369-dirty` · Python 3.14.6 on darwin · pytest 9.1.1.
+Generated 2026-09-09T02:13:17+00:00 · schema 0.1 · commit `75dbec2d6fabc3896fdd242353b70c2274d78749-dirty` · Python 3.14.6 on darwin · pytest 9.1.1.
 
 82 tests: 81 PASS, 0 FAIL, 1 DIVERGENCE.
 

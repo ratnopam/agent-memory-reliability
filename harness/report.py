@@ -16,6 +16,7 @@ restated here, so a renamed property cannot be described two ways in one reposit
 
 from __future__ import annotations
 
+import difflib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -291,6 +292,35 @@ def render(document: dict, spec: SpecText) -> str:
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
+
+
+def readme_matrix_drift(document: dict, spec: SpecText, readme_path: Path) -> str | None:
+    """The README's matrix against the one just generated. None means they agree.
+
+    The README is where the claim is read, so a stale table there is the most expensive
+    kind of drift in the repository. ``make reproduce`` fails on it.
+    """
+    if not readme_path.exists():
+        return f"{readme_path.name} does not exist"
+    lines = readme_path.read_text(encoding="utf-8").splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith("| Property |")]
+    if not starts:
+        return f"{readme_path.name} contains no results matrix (no '| Property |' table)"
+    start = starts[0]
+    end = start
+    while end < len(lines) and lines[end].startswith("|"):
+        end += 1
+    found = [line.rstrip() for line in lines[start:end]]
+    system = document["runs"][0]["system"]
+    expected = poster_matrix(document, spec, system)
+    if found != expected:
+        diff = "\n".join(
+            difflib.unified_diff(
+                found, expected, fromfile="README.md", tofile="generated", lineterm=""
+            )
+        )
+        return f"{readme_path.name} does not render the generated matrix\n{diff}"
+    return None
 
 
 def write(document: dict, spec_path: Path, directory: Path) -> Path:

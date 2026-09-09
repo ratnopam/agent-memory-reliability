@@ -29,6 +29,10 @@ def reproduce(out: Path | None, quiet: bool) -> int:
     raw_path = results.write(document, directory)
     summary_path = report.write(document, SPEC_PATH, directory)
 
+    drift = report.readme_matrix_drift(
+        document, report.read_spec(SPEC_PATH), ROOT / "README.md"
+    )
+
     if not quiet:
         print()
         print(summary_path.read_text(encoding="utf-8"), end="")
@@ -45,7 +49,9 @@ def reproduce(out: Path | None, quiet: bool) -> int:
             f"missing: {gap.check} for {gap.system}/{gap.mode} — {gap.reason}",
             file=sys.stderr,
         )
-    return 1 if suite.failed or gaps else 0
+    if drift:
+        print(drift, file=sys.stderr)
+    return 1 if suite.failed or gaps or drift else 0
 
 
 def determinism() -> int:
