@@ -1,4 +1,8 @@
-"""The one figure the simulation produces: two bars, ungated against gated.
+"""The one figure the simulation produces: two panels, three bars each.
+
+Left panel is ``inherited_fraction`` — writes descended from the 0.40 belief. Right panel
+is ``inflated_fraction`` — writes declared at or above 0.9 whose effective confidence sat
+at or below ``tau``. Three bars per panel, one per arm, values printed on the bars.
 
 Hand-written SVG through ``amr.svg``, so the file has no dependency, no timestamp, and no
 generated identifier, and two runs of the same seed produce the same bytes.
@@ -8,32 +12,71 @@ from __future__ import annotations
 
 from amr import svg
 
-WIDTH = 560
-HEIGHT = 380
-LEFT = 90
-BOTTOM = 300
-TOP = 70
-BAR_WIDTH = 110
-GAP = 150
+WIDTH = 880
+HEIGHT = 412
+TOP = 130
+BOTTOM = 360
+BAR_WIDTH = 74
+GAP = 96
+#: Left edge of each panel's axis. The second panel starts far enough right that the
+#: longest tick label cannot collide with the first panel's last bar.
+PANEL_LEFT = (96, 528)
+PANEL_WIDTH = 320
 
 TICKS = (0.0, 0.25, 0.5, 0.75, 1.0)
-FILL = {"ungated": svg.UNGATED_FILL, "gated": svg.GATED_FILL}
+#: Ungated red, gated green, and surfaced amber between them — the same three-way reading
+#: as the matrix, where the middle colour is "measured, not clean".
+FILL = {
+    "ungated": svg.UNGATED_FILL,
+    "surfaced": svg.SURFACED_FILL,
+    "gated": svg.GATED_FILL,
+}
+ARMS = ("ungated", "surfaced", "gated")
+
+PANELS = (
+    ("inherited", "Inherited the 0.40 belief", "inherited_fraction", "inherited_count"),
+    ("inflated", "Declared ≥ 0.9, effective ≤ tau", "inflated_fraction", "inflated_count"),
+)
+
+#: The honest caption. Hand-wrapped, because the SVG has no text-layout engine and the
+#: break has to be chosen by someone; joined with spaces for the summary table and
+#: results/README.md, so all three say it the same way. The gated bar is a boundary, not a
+#: result, and a reader should not have to work that out for themselves.
+CAPTION_LINES = (
+    (
+        "gated is zero by construction at tau={tau}: the injected belief and every "
+        "descendant are bounded at 0.40 and"
+    ),
+    (
+        "cannot be cited. The gated bar demonstrates the boundary; the surfaced bar "
+        "measures what visibility alone achieves."
+    ),
+)
+
+
+def caption_lines(tau: float) -> tuple[str, ...]:
+    return tuple(line.format(tau=tau) for line in CAPTION_LINES)
+
+
+def caption(tau: float) -> str:
+    """One line, for the Markdown table and the results README."""
+    return " ".join(caption_lines(tau))
 
 
 def inherited_chart(document: dict) -> str:
-    """``inherited_fraction`` per arm: writes descended from the 0.40 belief."""
+    """Both metrics, all three arms. Named for the metric the poster leads with."""
     tau = document["parameters"]["tau"]
     body = [
         svg.text(
-            LEFT - 42,
-            34,
-            "Writes inheriting the low-confidence belief",
-            size=18,
+            PANEL_LEFT[0] - 48,
+            36,
+            "How far one low-confidence belief travels",
+            size=19,
             weight="bold",
         ),
         svg.text(
-            LEFT - 42,
-            54,
+            PANEL_LEFT[0] - 48,
+            58,
             f"reference · seed {document['seed']} · "
             f"{document['parameters']['rounds']} rounds · three roles · tau {tau}",
             size=12,
@@ -41,58 +84,71 @@ def inherited_chart(document: dict) -> str:
             family=svg.MONO,
         ),
     ]
+    body.extend(_subtitle(tau))
 
+    for index, (_, heading, fraction_key, count_key) in enumerate(PANELS):
+        body.extend(
+            _panel(document, PANEL_LEFT[index], heading, fraction_key, count_key)
+        )
+    return svg.document(WIDTH, HEIGHT, body, "contamination: two metrics, three arms")
+
+
+def _subtitle(tau: float) -> list[str]:
+    return [
+        svg.text(PANEL_LEFT[0] - 48, 84 + 16 * offset, line, size=11, fill=svg.MUTED)
+        for offset, line in enumerate(caption_lines(tau))
+    ]
+
+
+def _panel(
+    document: dict, left: int, heading: str, fraction_key: str, count_key: str
+) -> list[str]:
+    body = [svg.text(left, TOP - 14, heading, size=13, weight="bold")]
+    right = left + PANEL_WIDTH
     height = BOTTOM - TOP
+
     for tick in TICKS:
         y = BOTTOM - height * tick
-        body.append(svg.line(LEFT, y, WIDTH - 40, y))
+        body.append(svg.line(left, y, right, y))
         body.append(
-            svg.text(LEFT - 10, y + 4, f"{tick:.0%}", size=11, fill=svg.MUTED, anchor="end")
+            svg.text(left - 10, y + 4, f"{tick:.0%}", size=11, fill=svg.MUTED, anchor="end")
         )
 
-    for index, name in enumerate(("ungated", "gated")):
+    for index, name in enumerate(ARMS):
         arm = document["arms"][name]
-        fraction = arm["inherited_fraction"]
-        x = LEFT + 40 + GAP * index
+        fraction = arm[fraction_key]
+        x = left + 16 + GAP * index
         bar = height * fraction
         if bar > 0:
             body.append(svg.rect(x, BOTTOM - bar, BAR_WIDTH, bar, FILL[name]))
         centre = x + BAR_WIDTH / 2
-        # Zero has no bar to print a label inside, so the value sits above the axis.
+        # Zero, or a bar too short to hold a label, prints the value above the axis
+        # instead of inside the bar. Every bar is labelled either way.
+        inside = bar > 30
         body.append(
             svg.text(
                 centre,
-                BOTTOM - bar + (24 if bar > 30 else -8),
+                BOTTOM - bar + (22 if inside else -8),
                 f"{fraction:.0%}",
-                size=16,
-                fill=svg.PAPER if bar > 30 else svg.INK,
+                size=15,
+                fill=svg.PAPER if inside else svg.INK,
                 anchor="middle",
                 weight="bold",
             )
         )
         body.append(
-            svg.text(centre, BOTTOM + 22, name, size=14, anchor="middle", weight="bold")
+            svg.text(centre, BOTTOM + 22, name, size=13, anchor="middle", weight="bold")
         )
         body.append(
             svg.text(
                 centre,
-                BOTTOM + 40,
-                f"{arm['inherited_count']} of {arm['denominator']} writes",
-                size=11,
+                BOTTOM + 38,
+                f"{arm[count_key]} of {arm['denominator']}",
+                size=10,
                 fill=svg.MUTED,
                 anchor="middle",
             )
         )
 
-    body.append(svg.line(LEFT, BOTTOM, WIDTH - 40, BOTTOM, stroke=svg.INK))
-    body.append(
-        svg.text(
-            LEFT - 42,
-            HEIGHT - 16,
-            f"gated: a source whose effective confidence is below {tau} may be read, "
-            "not cited.",
-            size=11,
-            fill=svg.MUTED,
-        )
-    )
-    return svg.document(WIDTH, HEIGHT, body, "contamination: inherited fraction by arm")
+    body.append(svg.line(left, BOTTOM, right, BOTTOM, stroke=svg.INK))
+    return body
