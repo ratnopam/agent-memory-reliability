@@ -3,12 +3,12 @@
 **Version:** 0.5 (draft)
 **License:** Apache 2.0
 
-Draft. `version1/SPEC.md` (0.3) is frozen and is what the Phase 0 results in
-`results/2026-09-09/` were produced against. This revision folds in the nineteen entries
-in `design-notes/spec-feedback.md`, all of which came from building a conforming
+Draft. `version1/SPEC.md` (0.3) is frozen. Every numbered entry in
+`design-notes/spec-feedback.md` is folded in here: 1–19 came from building a conforming
 implementation and a suite against 0.3 and finding the text silent, ambiguous, or
-self-contradicting. The changelog names each one. Entries from 20 on were raised against
-this revision and are applied to it directly.
+self-contradicting; 20–24 and 25–33 were raised against the drafts that followed and are
+applied directly. The changelog at the foot of this file names each one against the version
+that absorbed it.
 
 ---
 
