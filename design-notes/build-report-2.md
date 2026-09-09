@@ -296,7 +296,7 @@ Full text in [DECISIONS.md](../DECISIONS.md); the new ones, briefly.
 
 ## Verification
 
-Fresh clone into `/tmp` from the committed tree at `db9af08`, ambient Python **3.14.6** with
+Fresh clone into `/tmp` from the committed tree at `a47ac75`, ambient Python **3.14.6** with
 no pytest, so `make deps` built a `.venv` from the `[test]` extra and nothing else:
 
 ```
@@ -306,6 +306,10 @@ make contamination ungated 17 (47%) / gated 0 (0%)
 make determinism   exit 0 — byte-identical across four files
 make demo          15 lines
 ```
+
+In that clone, `contamination.svg` came out byte-identical to the committed file and
+`contamination.json` identical apart from `git_sha` — so the simulation reproduces across
+clones, not only across two subprocesses in one tree.
 
 A second clean venv containing only pip: `pip install -e .` installs
 `agent-memory-reliability 0.1.0` with no dependencies, `python -c "from amr.protocol import
