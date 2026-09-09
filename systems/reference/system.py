@@ -36,7 +36,7 @@ from harness.protocol import (
 from systems.reference.confidence import ConfidenceIndex
 from systems.reference.forget import apply_forget
 from systems.reference.scope import chain_node, native_live_ids, owned, readable
-from systems.reference.store import Revision, Store
+from systems.reference.store import Revision, Store, StoredRecord
 
 EMPTY_CHAIN = 1.0
 SYSTEM_NAME = "reference"
@@ -71,8 +71,10 @@ class ReferenceSystem:
             cross_scope_derivation="opaque-ancestor",
             durability="round-trip",
             notes=(
-                "A foreign ancestor is opaque in a provenance walk whether or not a "
-                "grant exists; the grant governs get, not the walk.",
+                (
+                    "A foreign ancestor is opaque in a provenance walk whether or not a "
+                    "grant exists; the grant governs get, not the walk."
+                ),
                 "A write may only cite sources the writing scope can read.",
                 "revise and forget require ownership of the record, not a read grant.",
             ),
@@ -118,13 +120,7 @@ class ReferenceSystem:
         reason: str,
         scope: Scope = "default",
     ) -> RevisionReceipt:
-        record = owned(self._store, memory_id, scope)
-        if record is None:
-            if self._store.known(memory_id):
-                raise ScopeError(f"{memory_id!r} is not native to scope {scope!r}")
-            raise LookupError(f"{memory_id!r} does not resolve")
-        if record.tombstoned or self._store.is_forgotten(memory_id):
-            raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
+        record = self._require_owned_live(memory_id, scope)
         if not 0.0 <= float(new_declared) <= 1.0:
             raise ValueError(
                 f"declared_confidence must be in [0.0, 1.0], got {new_declared}"
@@ -282,6 +278,28 @@ class ReferenceSystem:
             return False
         _, owner = state
         return owner == scope or (owner, scope) in self._store.grants()
+
+    def _require_owned_live(
+        self, memory_id: MemoryId, scope: Scope
+    ) -> StoredRecord:
+        """The record, if the caller owns it and it has not been forgotten.
+
+        A forgotten record is reported as forgotten before ownership is considered, so
+        that a caller is told what actually happened rather than being pointed at a
+        scope boundary that is not the problem.
+        """
+        state = self._store.forget_state(memory_id)
+        if state is not None:
+            _, owner = state
+            if owner != scope:
+                raise ScopeError(f"{memory_id!r} is not native to scope {scope!r}")
+            raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
+        record = owned(self._store, memory_id, scope)
+        if record is None:
+            if self._store.known(memory_id):
+                raise ScopeError(f"{memory_id!r} is not native to scope {scope!r}")
+            raise LookupError(f"{memory_id!r} does not resolve")
+        return record
 
     def _require_walkable(self, memory_id: MemoryId, scope: Scope) -> None:
         """A walk needs a chain position, which a tombstone still has.

@@ -15,4 +15,4 @@ from systems.reference.system import (
 
 register(SYSTEM_NAME, ReferenceSystem)
 
-__all__ = ["ReferenceSystem", "SYSTEM_NAME", "SYSTEM_VERSION"]
+__all__ = ["SYSTEM_NAME", "SYSTEM_VERSION", "ReferenceSystem"]

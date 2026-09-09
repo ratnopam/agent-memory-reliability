@@ -18,7 +18,7 @@ grant; nothing in SPEC.md 7 says otherwise.
 from __future__ import annotations
 
 from harness.protocol import ChainNode, Scope
-from systems.reference.store import StoredRecord, Store
+from systems.reference.store import Store, StoredRecord
 
 
 def visible(store: Store, record: StoredRecord, viewer: Scope) -> bool:

@@ -161,7 +161,10 @@ def test_p2_7_raise_does_not_lift_descendant(
     assert system.effective_confidence(leaf) == 0.4
 
     if not capabilities.revision_raise_supported:
-        with pytest.raises(Exception):
+        # A system that declares it cannot raise has to refuse, not silently accept.
+        # The specification does not name the exception, so the check accepts either
+        # "you asked for something invalid" or "I do not implement that".
+        with pytest.raises((ValueError, NotImplementedError)):
             system.revise(root, 0.9, "raise attempt on a system that declares no raise")
         assert system.effective_confidence(leaf) == 0.4
         return
