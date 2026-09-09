@@ -18,15 +18,23 @@ from amr.protocol import (
     Capabilities,
     ForgetMode,
     MemorySystem,
+    ReadOutcome,
     effective_confidence_reference,
 )
 from properties.conftest import DivergenceRecorder
+from properties.interleavings import ALPHA, BETA
 from properties.support import (
     random_dags,
     readable_graph,
+    sharing_system,
     survives,
     write_dag,
 )
+
+#: A third scope, so that P2.8's bounding ancestor is one the reader cannot reach: a
+#: grant of alpha's scope conveys alpha's records, not the records alpha itself derived
+#: from. Open question 9 is about this granularity; the check holds either way.
+GAMMA = "gamma"
 
 
 @pytest.mark.check("P2.1")
@@ -173,6 +181,36 @@ def test_p2_7_raise_does_not_lift_descendant(
 
     assert system.effective_confidence(leaf) == 0.4, "a record is capped by its own claim"
     assert system.effective_confidence(root) == 0.9
+
+
+@pytest.mark.check("P2.8")
+def test_p2_8_effective_confidence_is_scope_invariant(
+    system: MemorySystem, capabilities: Capabilities
+) -> None:
+    """P2.8 | Read effective_confidence from the owner and from a granted reader | Identical
+
+    I2.8. The scope argument decides *whether* the operation answers, never what it
+    answers. The chain is built so the two readings could differ if it did: the leaf's
+    bound comes from an ancestor the reader never gains sight of, so a scope-relative
+    implementation would hand the reader the higher, inflated number.
+    """
+    sharing = sharing_system(system, capabilities)
+    weak = system.write("weak evidence", 0.3, scope=GAMMA)
+    sharing.grant(GAMMA, ALPHA)
+    leaf = system.write("conclusion", 0.9, sources=[weak], scope=ALPHA)
+    sharing.grant(ALPHA, BETA)
+
+    owner_value = system.effective_confidence(leaf, ALPHA)
+    assert owner_value == 0.3
+
+    assert system.get(leaf, BETA).outcome is ReadOutcome.OK, "the grant landed"
+    assert system.get(weak, BETA).outcome is ReadOutcome.NOT_FOUND, (
+        "a grant of alpha's scope does not reach gamma's records"
+    )
+
+    assert system.effective_confidence(leaf, BETA) == owner_value, (
+        "effective confidence is a property of the graph, not of who is asking"
+    )
 
 
 @pytest.mark.extra("reference-arithmetic-agreement")

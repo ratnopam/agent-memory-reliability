@@ -38,9 +38,12 @@ def _run(name: str) -> str:
         text=True,
         check=False,
         # As a reader would, from a checkout: no install, no conftest on the path.
+        # SYSTEMS is cleared because the example names the reference and asserts its
+        # numbers; a caller measuring their own system must not change what it prints.
         env={
             **os.environ,
             "PYTHONPATH": os.pathsep.join([str(root / "src"), str(root)]),
+            "SYSTEMS": "",
         },
     )
     assert completed.returncode == 0, completed.stderr

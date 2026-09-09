@@ -1,6 +1,6 @@
 # Agent Memory Reliability Specification
 
-**Version:** 0.4 (draft)
+**Version:** 0.5 (draft)
 **License:** Apache 2.0
 
 Draft. `version1/SPEC.md` (0.3) is frozen and is what the Phase 0 results in
@@ -42,6 +42,7 @@ A **memory store** holds **records**. Each record has:
 | `sources` | set of `id` | The records this one was derived from. May be empty. |
 | `scope` | opaque identifier | The isolation boundary the record belongs to (§7). |
 | `origin` | typed reference, or none | Descriptive only. What an external root refers to: a document, URL, tool call, or conversation turn. Never affects arithmetic. |
+| `floor` | float in [0.0, 1.0], or none | A bound pushed into this record by a `residue` forget of an ancestor (§6.1). State, not content. Participates in `effective` as a third term. Survives a reopen. Never readable except through `effective_confidence` (open question 8). |
 
 The `sources` relation over all records forms the **provenance graph**. A record with
 empty `sources` is a **root**. A record reachable from `m` by following `sources`
@@ -112,7 +113,8 @@ grants(owner_scope)                                 -> set of reader scope
 existed, or the record existed and has been forgotten. The third is a distinct signal
 and MUST NOT be collapsed into the second — §6.2 depends on it.
 
-`revise` and `forget` are the only operations that change existing state. `revise`
+`revise` and `forget` are the only operations that change a record's state. `grant` and
+`revoke` change the grant table and no record. `revise`
 changes a record's `declared_confidence` and nothing else: content, `sources`, `scope`,
 and `id` are immutable after a write. What triggers a revision — a recency policy, a
 postmortem finding, a human correction — is a caller's concern. This specification takes
@@ -140,8 +142,8 @@ operation raises from this table alone, without reading a reference implementati
 |---|---|---|
 | `UnresolvedSourceError` | `write` | Any id in `sources` does not resolve for the writing scope: it never existed, or it exists in another scope with no grant (I1.6, I4.1). The two cases MUST NOT be distinguishable. |
 | `CycleError` | `write`, and any operation that opens a stored snapshot | The requested edges would close a cycle, or a snapshot's edges contain one (I1.1, P1.7). |
-| `ForgottenRecordError` | `write`, `revise`, `provenance`, `effective_confidence`, `descendants` | The target — or, for `write`, a cited source — has been forgotten and no longer has the state the operation needs. A write MUST NOT cite a forgotten record, tombstone included (§6.2). `provenance`, `effective_confidence`, and `descendants` answer for a tombstone, which retains its chain position, and fail for a record removed by `cascade`, `erase`, or `residue`. |
-| `NotFound` | every operation taking an `id` | No record with that id is visible to the calling scope. `get` reports this as an outcome rather than an error; the others fail. |
+| `ForgottenRecordError` | `write`, `revise`, `provenance`, `effective_confidence`, `descendants`, `revisions` | The target — or, for `write`, a cited source — has been forgotten and no longer has the state the operation needs. A write MUST NOT cite a forgotten record, tombstone included (§6.2). `provenance`, `effective_confidence`, `descendants`, and `revisions` answer for a tombstone, which retains its chain position and its recorded history, and fail for a record removed by `cascade`, `erase`, or `residue`. |
+| `NotFound` | every operation taking an `id`, `revisions` included | No record with that id is visible to the calling scope. `get` reports this as an outcome rather than an error; the others fail. |
 | `ScopeError` | `revise`, `forget` | The target *is* visible to the calling scope through a grant, and the calling scope does not own it. |
 
 Four consequences worth stating, because each one closes an oracle:
@@ -249,6 +251,18 @@ effective(m) = min( declared(m), min{ effective(a) : a in sources(m) } )
 min over the empty set = 1.0
 ```
 
+Where `m` carries a `floor` (§2, pushed in by a `residue` forget of an ancestor), the rule
+takes a third term:
+
+```
+effective(m) = min( declared(m), min{ effective(a) : a in sources(m) }, floor(m) )
+```
+
+A record with no floor is unchanged, and the empty-chain convention is unaffected either
+way: `min(∅)` is still the vacuous bound over the *ancestor* set, and a floor is not an
+ancestor. A record with a floor and no surviving ancestors is bounded by `min(declared,
+floor)`, which is the whole point of the mode.
+
 The empty-set convention is stated explicitly because it is load-bearing. `min(∅) = 1.0`
 is the vacuous upper bound: a record with no ancestors is bounded only by its own
 declared confidence. This is the correct reading for roots. It is also the mechanism
@@ -304,10 +318,16 @@ set. See §6.4.
 | P2.5 | Forget weakest ancestor, re-read leaf | `effective_after ≤ effective_before` |
 | P2.6 | Read revision history after a revise | Prior value, new value, and reason present |
 | P2.7 | Raise an ancestor above a descendant's declared value | Descendant unchanged |
+| P2.8 | Read `effective_confidence` of a record from its owner scope and from a granted reader scope | Identical values |
 
 P2.5 is written as a signed comparison, not as a mode-specific assertion. The same
 assertion passes under `tombstone` and fails under `erase`. That difference is the
-result, and it is reproducible with a one-line configuration change.
+result, and it is reproducible with a one-line configuration change. If the declared mode
+removed the leaf, the comparison has no right-hand side and the check passes vacuously;
+the receipt (P3.5) is where the removal is verified.
+
+A system declaring `residue` passes P2.5 without any check being edited: the floor supplies
+the bound the removed ancestor was providing, so `effective_after ≤ effective_before` holds.
 
 ---
 
@@ -324,10 +344,12 @@ An implementation MUST support at least one and MUST declare which:
   Descendants survive. Chain arithmetic unchanged. I2.5 holds.
 - **`cascade`** — the record and every descendant are removed. Nothing survives to
   inflate. I2.5 holds vacuously.
-- **`erase`** — the record and its edges are removed. Descendants survive with shortened
-  chains. I2.5 is violated by construction.
-- **`residue`** — *declarable, not a default.* The record is removed completely —
-  content, `id`, and edges — and before removal its effective confidence contribution is
+- **`erase`** — the record's content and edges are removed; the id survives only as a
+  forgotten-id marker (§6.2). Descendants survive with shortened chains. I2.5 is violated
+  by construction.
+- **`residue`** — *declarable, not a default.* The record's content and edges are removed —
+  the id survives only as a forgotten-id marker (§6.2) — and before removal its effective
+  confidence contribution is
   pushed into each surviving descendant as a bare **floor**: a number the descendant now
   carries as a property of itself, with no reference to where it came from. The
   descendant's effective confidence is the minimum of its declared value, its surviving
@@ -344,6 +366,10 @@ An implementation MUST support at least one and MUST declare which:
   inflating anything downstream. What it costs is in §6.4.
 
 ### 6.2 Universal post-conditions
+
+Every mode retains the forgotten record's `id` in a forgotten-id set, so that I3.1 and I3.4
+hold. The id is opaque and carries no content, confidence, or edge; retaining it is not
+retaining the record.
 
 Independent of mode, after `forget(x)`:
 
@@ -417,10 +443,8 @@ available resolution costs something real:
   retained record about a subject who asked to be forgotten. Whether that satisfies a
   deletion obligation is a legal question, not an engineering one.
 - **Cascade always.** Deleting one source destroys unrelated downstream work.
-- **Recompute derivatives to zero.** Defensible, but it means an unrelated forget
-  request can silently zero out conclusions no one asked about.
 - **`residue`.** The floor keeps the number honest and retains nothing about the removed
-  record. What it costs is explanation: the descendant is capped and can no longer say
+  record beyond the forgotten-id marker every mode keeps (§6.2). What it costs is explanation: the descendant is capped and can no longer say
   by what. A reader who asks "why is this 0.4 when everything in its chain is above 0.9"
   has no answer inside the store, which is a worse position than a tombstone leaves them
   in. And a floor is itself a small inference leak — in a graph of two or three records,
@@ -483,6 +507,7 @@ what I3.2 and P3.4 rely on.
 | P4.3 | Cross-scope derivation, walk from B | Ancestor id present, content withheld |
 | P4.4 | Forget in A with descendants in B | Declared mode applied across the boundary |
 | P4.5 | Replay a fixed set of interleaved write schedules, each a valid topological order of one plan | Every schedule produces the same DAG: same edges, no cycles, no lost edges |
+| P4.6 | Reader with a grant attempts `revise` and `forget` on the owner's record | `ScopeError`; owner's record unchanged; revisions unchanged |
 
 ---
 
@@ -587,11 +612,43 @@ matrix.
    observable through `effective_confidence` and nothing else, which is what makes it a
    bare floor rather than a tombstone by another name. A reader who cannot ask "why" may
    be worse off than one told "an ancestor was deleted".
+9. Is a grant the right granularity? §7 makes a grant scope-wide — B may read every record
+   A owns, present and future — where a per-record grant would let A share one piece of
+   evidence without exposing the rest of its scope. Scope-wide is simpler to reason about
+   and to revoke; per-record is what a real deployment is likely to want.
+10. Should a forget be permitted to recompute derivatives to zero? It is defensible —
+    nothing downstream inflates and nothing is retained — but an unrelated forget request
+    would then silently zero out conclusions no one asked about, so it is recorded as a
+    question rather than offered as a mode.
 
 ---
 
 ## Changelog
 
+- **0.5 (draft)** — the nine fixes raised against 0.4, entries 25–33 in
+  `design-notes/spec-feedback.md`. **F1** (entry 25): §6.2 says every mode retains the
+  forgotten record's id in a forgotten-id set, which is what makes I3.1 and I3.4 statable
+  for `cascade`, `erase`, and `residue`; §6.1's `erase` and `residue` wording is corrected
+  from "removed completely — content, `id`, and edges" accordingly, and §6.4's `residue`
+  cost paragraph acknowledges the retained marker. **F2** (entry 26): "recompute
+  derivatives to zero" is removed from §6.4's list of resolutions and becomes open
+  question 10 — it was never a declarable mode and listing it beside three that are
+  implied otherwise. **F3** (entry 27): two checks added — **P2.8**, effective confidence
+  read from the owner scope and from a granted reader scope must be identical, which makes
+  I2.8 falsifiable; and **P4.6**, a reader with a grant attempting `revise` and `forget`,
+  which promotes the one reachable scope error of §3.1 from a supplementary check to a
+  numbered one. Twenty-four numbered checks become twenty-six. **F4** (entry 28): §3 says
+  `revise` and `forget` are the only operations that change a record's state, and `grant`
+  and `revoke` change the grant table and no record. **F5** (entry 29): §3.1 lists
+  `revisions` under `ForgottenRecordError` and `NotFound`, which it always implied and
+  never said. **F6** (entry 30): the P2.5 note says the comparison passes vacuously when
+  the declared mode removed the leaf, and names P3.5 as where the removal is verified.
+  **F7** (entry 31): open question 9 on grant granularity, scope-wide versus per-record.
+  **F8** (entry 32): §2 gains a `floor` row and §5's `effective` rule takes a third term
+  when a floor is present, so `residue` is expressed in the arithmetic rather than only in
+  prose; the empty-chain convention is unaffected. **F9** (entry 33): §5 states that a
+  system declaring `residue` passes P2.5 with no check edited. `residue` remains
+  spec-only: nothing in `systems/reference/` implements it.
 - **0.4 (draft)** — the nineteen entries in `design-notes/spec-feedback.md`, folded in.
   §3 grows from eight operations to twelve: `revisions` (entry 1) and `grant` / `revoke`
   / `grants` (entry 2), and gains an error-vocabulary table (§3.1). §8 defines the
