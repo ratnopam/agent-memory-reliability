@@ -14,6 +14,11 @@
 The date is UTC, matching `generated_at`. A directory is one day's results, overwritten if
 `amr reproduce` runs twice in a day; the commit SHA inside tells you which tree produced it.
 
+The committed records are produced in a fresh clone with `--out` pointed outside the working
+tree, then copied in. Writing into the clone would make the second of the two commands see
+the first one's output and stamp `-dirty`, and two records of the same tree disagreeing about
+which tree it was is worse than the extra step.
+
 ## Determinism
 
 Exactly one field in `raw.json` may differ between two runs of the same tree:
@@ -32,9 +37,10 @@ schema            "0.1". A reader that does not recognise the value must refuse 
 generated_at      UTC ISO 8601, seconds resolution. The only volatile field.
 environment
   git_sha         The commit, with "-dirty" appended if the tree had uncommitted changes.
-                  Note that rerunning `reproduce` on a clean clone rewrites the committed
-                  files in this directory, so a second run in the same day reports the tree
-                  as dirty. The committed record is always from a clean tree.
+                  Untracked files count. Note that rerunning `reproduce` in place rewrites
+                  the committed files in this directory, so a second run in the same day
+                  reports the tree as dirty. The committed record is always from a clean
+                  tree; see above for how.
   platform        "darwin", "linux", ...
   python_implementation, python_version
   pytest_version
