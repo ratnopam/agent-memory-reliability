@@ -148,6 +148,18 @@ def results_dir(root: Path, day: str | None = None) -> Path:
     return root / "results" / (day or datetime.now(timezone.utc).strftime("%Y-%m-%d"))
 
 
+def latest_raw(root: Path) -> Path:
+    """The newest committed ``results/<date>/raw.json``.
+
+    Directories are named by UTC date, so sorting them is sorting them by time. Used by
+    ``amr drift``, which checks what is in the repository rather than running the suite.
+    """
+    candidates = sorted((root / "results").glob("*/raw.json"))
+    if not candidates:
+        raise FileNotFoundError(f"no results/<date>/raw.json under {root / 'results'}")
+    return candidates[-1]
+
+
 def write(document: dict, directory: Path) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "raw.json"

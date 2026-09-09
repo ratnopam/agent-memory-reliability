@@ -21,8 +21,17 @@ PY := $(shell if [ -x $(VENV_PY) ]; then echo $(VENV_PY); \
 SOURCES := src/amr properties systems scenarios examples taxonomy mcp conftest.py
 SEED ?= 7
 
+# The same pattern CI greps for. A model client imported anywhere the suite can reach is
+# a measurement path with a model in it, whether or not the import is used.
+#
+# The former-name gate below spells its pattern as two adjacent quoted strings, which the
+# shell joins after `eval`. That is not decoration: written whole, this line would be the
+# match, and a gate that fails on itself teaches whoever hits it to disable the gate.
+LLM_IMPORT := \b(import|from)[[:space:]]+(anthropic|openai|cohere|litellm|langchain|transformers)\b
+
 .DEFAULT_GOAL := help
-.PHONY: help deps test reproduce determinism demo contamination matrix lint mcp-test clean
+.PHONY: help deps test reproduce determinism demo contamination matrix drift lint \
+	release-check mcp-test clean
 
 help:
 	@echo "make test          run the conformance suite"
@@ -31,7 +40,9 @@ help:
 	@echo "make demo          the reference, its matrix, and its one divergence"
 	@echo "make contamination the three-role simulation, gated against ungated"
 	@echo "make matrix        render results/<today>/raw.json as an SVG table"
+	@echo "make drift         does README.md render the committed matrix?"
 	@echo "make lint          ruff or pyflakes if available, otherwise compileall"
+	@echo "make release-check every gate, in order, one line each: run this before a tag"
 	@echo "make mcp-test      the MCP stdio integration test (installs the mcp package)"
 	@echo "make clean         remove $(VENV) and caches, and nothing else"
 	@echo "interpreter:       $(PY)"
@@ -67,6 +78,9 @@ contamination: deps
 matrix: deps
 	$(PY) -m amr matrix results/$$(date -u +%Y-%m-%d)/raw.json --svg
 
+drift: deps
+	@$(PY) -m amr drift
+
 lint: deps
 	@if $(PY) -c 'import ruff' >/dev/null 2>&1; then \
 		$(PY) -m ruff check $(SOURCES); \
@@ -76,6 +90,32 @@ lint: deps
 		echo "no ruff, no pyflakes: falling back to compileall"; \
 		$(PY) -m compileall -q $(SOURCES); \
 	fi
+
+# Every gate that has to be green before a tag, in one command. The suite runs first
+# because a failure there is the cheapest to read, and the greps run last because they are
+# the ones nobody remembers. One line per gate; the first red gate stops the run and prints
+# the tail of its output. Green here is the precondition for docs/RELEASE.md.
+release-check: deps
+	@log=$$(mktemp); trap 'rm -f $$log' EXIT; \
+	gate() { \
+		printf '%-34s' "$$1"; \
+		if eval "$$2" >$$log 2>&1; then \
+			echo "ok"; \
+		else \
+			echo "FAILED"; echo; echo "\$$ $$2"; tail -n 30 $$log; exit 1; \
+		fi; \
+	}; \
+	gate "conformance suite" "$(PY) -m amr test -q"; \
+	gate "results regenerated" "$(PY) -m amr reproduce --quiet"; \
+	gate "determinism" "$(PY) -m amr determinism"; \
+	gate "contamination simulation" "$(PY) -m amr contamination --seed $(SEED) --quiet"; \
+	gate "lint" "$(MAKE) --no-print-directory lint"; \
+	gate "reference is stdlib only" "$(PY) .github/check_stdlib_only.py"; \
+	gate "no LLM in the measured path" "! grep -rniE '$(LLM_IMPORT)' --include='*.py' $(SOURCES)"; \
+	gate "no former name in the tree" "! git grep -i -q -e 'mem''ledger'"; \
+	gate "README renders the matrix" "$(PY) -m amr drift"; \
+	gate "documentation links resolve" "$(PY) .github/check_links.py"; \
+	echo "release-check: ten gates, all green"
 
 mcp-test: deps
 	$(PY) -m pip install --quiet -e ".[mcp]"

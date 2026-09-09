@@ -1,6 +1,6 @@
 """``amr`` — the command line the Makefile calls. ``python -m amr`` is the same thing.
 
-Six subcommands, and the Makefile is a convenience over them rather than the other way
+Seven subcommands, and the Makefile is a convenience over them rather than the other way
 round, so nothing in this repository can only be done by GNU make:
 
 * ``test``          run the property suite, pytest's own output, nothing added
@@ -8,7 +8,8 @@ round, so nothing in this repository can only be done by GNU make:
 * ``determinism``   run ``reproduce`` and ``contamination`` twice, compare the bytes
 * ``demo``          the reference through the suite, four blocks, no pytest output
 * ``matrix``        render an existing ``raw.json`` as an SVG table
-* ``contamination`` the three-role simulation, gated versus ungated
+* ``contamination`` the three-role simulation, three arms
+* ``drift``         the README's matrix against committed results, running nothing
 
 ``reproduce`` exits non-zero if any check FAILed. A DIVERGENCE does not fail the command:
 it is a reported disagreement with an open question in the specification, and a build that
@@ -22,7 +23,7 @@ import sys
 from pathlib import Path
 
 from amr import demo as demo_module
-from amr import report, results
+from amr import registry, report, results
 from amr.determinism import compare_two_runs
 from amr.paths import repo_root, spec_path
 from amr.runner import missing_checks, run_suite
@@ -43,8 +44,14 @@ def cmd_reproduce(out: Path | None, quiet: bool) -> int:
     directory = out or results.results_dir(root)
     raw_path = results.write(document, directory)
     summary_path = report.write(document, spec_file, directory)
-    drift = report.readme_matrix_drift(
-        document, report.read_spec(spec_file), root / "README.md"
+    # The README renders the reference's matrix. A run filtered with SYSTEMS is not the
+    # document that table is about, so it is not evidence of drift either way.
+    drift = (
+        None
+        if registry.selected_names()
+        else report.readme_matrix_drift(
+            document, report.read_spec(spec_file), root / "README.md"
+        )
     )
 
     if not quiet:
@@ -91,11 +98,32 @@ def cmd_matrix(raw: Path, as_svg: bool, out: Path | None) -> int:
     return 0
 
 
-def cmd_contamination(seed: int, out: Path | None, quiet: bool) -> int:
+def cmd_drift(raw: Path | None) -> int:
+    """The same check ``reproduce`` makes, over what is committed rather than a fresh run.
+
+    ``make release-check`` wants each gate to be its own line, and a release is made from
+    the tree as it stands: the question here is whether the table a reader sees in the
+    README is the table in ``results/<date>/``, not whether today's run agrees with itself.
+    """
+    root = repo_root()
+    path = raw or results.latest_raw(root)
+    document = results.load(path)
+    spec = report.read_spec(spec_path(root))
+    drift = report.readme_matrix_drift(document, spec, root / "README.md")
+    if drift:
+        print(drift, file=sys.stderr)
+        return 1
+    print(f"README.md renders the matrix in {_display(path, root)}")
+    return 0
+
+
+def cmd_contamination(seed: int, out: Path | None, quiet: bool, rounds: int | None) -> int:
     from scenarios.contamination import run as contamination
 
     root = repo_root()
-    return contamination.main(root, seed=seed, out=out, quiet=quiet)
+    # The scenario owns the default, so --help does not have to import the scenario.
+    extra = {} if rounds is None else {"rounds": rounds}
+    return contamination.main(root, seed=seed, out=out, quiet=quiet, **extra)
 
 
 def _display(path: Path, root: Path) -> str:
@@ -112,7 +140,8 @@ USAGE = """the conformance suite for agent memory reliability.
   amr determinism     run reproduce and contamination twice, compare the bytes
   amr demo            the reference, its matrix, its one divergence: fifteen lines
   amr matrix          render an existing raw.json as an SVG table
-  amr contamination   the three-role simulation, gated versus ungated
+  amr contamination   the three-role simulation: ungated, surfaced, gated
+  amr drift           does README.md render the committed matrix? runs nothing
 
 reproduce exits non-zero if any check FAILed. A DIVERGENCE does not: it is a reported
 disagreement with an open question in the specification, and a build that went red on it
@@ -167,7 +196,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="directory for contamination.json and the chart (default results/<today>/)",
     )
     contamination.add_argument(
+        "--rounds",
+        type=int,
+        default=None,
+        help="rounds per arm (default 60); lower it to shorten a run, not to change a finding",
+    )
+    contamination.add_argument(
         "--quiet", action="store_true", help="do not print the table to stdout"
+    )
+
+    drift = commands.add_parser(
+        "drift", help="check README.md against the committed results matrix"
+    )
+    drift.add_argument(
+        "raw",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="a results/<date>/raw.json (default: the newest one committed)",
     )
     return parser
 
@@ -186,7 +232,9 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_demo()
     if args.command == "matrix":
         return cmd_matrix(args.raw, args.svg, args.out)
-    return cmd_contamination(args.seed, args.out, args.quiet)
+    if args.command == "drift":
+        return cmd_drift(args.raw)
+    return cmd_contamination(args.seed, args.out, args.quiet, args.rounds)
 
 
 if __name__ == "__main__":

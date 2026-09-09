@@ -61,6 +61,23 @@ jobs:
       - name: The reference implementation imports the standard library only
         run: python .github/check_stdlib_only.py
 
+      # The pattern is assembled from two halves so that this file is not itself the match.
+      - name: No former name in the tree
+        run: |
+          if git grep -i -n -e 'mem''ledger'; then
+            echo "the pre-rename name is still in a tracked file"
+            exit 1
+          fi
+          echo "none found"
+
+      # `make reproduce` above compares the README against its own fresh run. This compares it
+      # against what is committed, which is what a reader who never runs anything actually sees.
+      - name: README renders the committed matrix
+        run: make drift
+
+      - name: Documentation links resolve
+        run: python .github/check_links.py
+
       # The results document is the artefact the claims are made from, so every matrix
       # leg publishes its own copy and two legs can be diffed against each other.
       - name: Upload results
