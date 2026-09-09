@@ -1,7 +1,7 @@
 """Every numbered check in the specification has exactly one test.
 
 This is the check on the suite itself. It parses the conformance tables in
-``version1/SPEC.md`` and compares them against the ``@pytest.mark.check`` markers in this
+``version2/SPEC.md`` and compares them against the ``@pytest.mark.check`` markers in this
 directory, so adding a row to the spec without adding a test fails the build.
 """
 
@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = ROOT / "version1" / "SPEC.md"
+SPEC = ROOT / "version2" / "SPEC.md"
 PROPERTIES = ROOT / "properties"
 
 SPEC_ROW = re.compile(r"^\|\s*(P\d+\.\d+)\s*\|")
@@ -39,10 +39,12 @@ def marked_tests() -> dict[str, list[str]]:
 
 
 def test_every_spec_check_has_exactly_one_test() -> None:
-    """The 23 numbered checks map one-to-one onto marked test functions."""
+    """The 24 numbered checks map one-to-one onto marked test functions."""
     spec_ids = spec_check_ids()
     assert len(spec_ids) == len(set(spec_ids)), f"duplicate rows in {SPEC.name}"
-    assert len(spec_ids) == 23, f"expected 23 checks in {SPEC.name}, found {len(spec_ids)}"
+    assert len(spec_ids) == 24, (
+        f"expected 24 checks in {SPEC.name}, found {len(spec_ids)}"
+    )
 
     found = marked_tests()
     missing = sorted(set(spec_ids) - set(found))

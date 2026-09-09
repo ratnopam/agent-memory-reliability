@@ -29,9 +29,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness import registry
-from harness.outcomes import DIVERGENCE_PROPERTY, CheckOutcome, DivergenceRecord
-from harness.protocol import Capabilities, ForgetMode
+from amr import registry
+from amr.outcomes import DIVERGENCE_PROPERTY, CheckOutcome, DivergenceRecord
+from amr.protocol import Capabilities, ForgetMode
 
 CHECK_PROPERTY = "amr-check"
 EXTRA_PROPERTY = "amr-extra"

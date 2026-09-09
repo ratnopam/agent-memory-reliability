@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import pytest
 
-from harness.protocol import (
+from amr.protocol import (
     ForgetMode,
     ForgottenRecordError,
     MemorySystem,
     ReadOutcome,
 )
-from harness.registry import Registration
+from amr.registry import Registration
 from properties.support import observable_state, survives
 
 
@@ -133,7 +133,7 @@ def test_forget_without_descendants_is_mode_independent(
     record's own retained arithmetic (a tombstone keeps its chain position by design,
     SPEC.md 6.1). Everything else a caller can observe must match.
     """
-    from harness.registry import modes_for
+    from amr.registry import modes_for
 
     observations: dict[ForgetMode, tuple[str, ...]] = {}
     for mode in modes_for(registration):

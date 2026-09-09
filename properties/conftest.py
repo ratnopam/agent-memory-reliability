@@ -19,9 +19,9 @@ from typing import Callable
 
 import pytest
 
-from harness import registry
-from harness.outcomes import DIVERGENCE_PROPERTY, DivergenceRecord
-from harness.protocol import Capabilities, ForgetMode, MemorySystem
+from amr import registry
+from amr.outcomes import DIVERGENCE_PROPERTY, DivergenceRecord
+from amr.protocol import Capabilities, ForgetMode, MemorySystem
 
 CHECK_PROPERTY = "amr-check"
 EXTRA_PROPERTY = "amr-extra"

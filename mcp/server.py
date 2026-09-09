@@ -29,15 +29,18 @@ from pathlib import Path
 from typing import Any
 
 _ROOT = Path(__file__).resolve().parent.parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+for _path in (_ROOT, _ROOT / "src"):
+    # Works from a checkout with nothing installed but the mcp package; an editable
+    # install of this project makes both entries redundant rather than wrong.
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from mcp.server.mcpserver import MCPServer  # noqa: E402
 from mcp.server.mcpserver.exceptions import (  # noqa: E402
     ToolError as AnticipatedToolError,
 )
 
-from harness.protocol import (  # noqa: E402
+from amr.protocol import (  # noqa: E402
     Chain,
     ConfidenceDelta,
     CycleError,
@@ -213,7 +216,13 @@ def _translated(call):
 
 
 def build_server(system: ReferenceSystem | None = None) -> MCPServer:
-    """The nine operations of SPEC.md 3 as tools, plus the revision reader."""
+    """The nine record operations of SPEC.md 3 as tools, plus ``memory_capabilities``.
+
+    Not the other three. ``grant``, ``revoke``, and ``grants`` administer who may read
+    across a scope boundary, and a client that can widen its own visibility is not
+    isolated by anything (SPEC.md 7). Grants are configuration, set by whoever runs the
+    server; there is no tool for them on purpose.
+    """
     memory = system or ReferenceSystem(default_forget_mode=_default_mode())
     server = MCPServer(
         name="agent-memory-reliability",

@@ -31,8 +31,9 @@ every affected identifier, and every confidence that moved.
 a recorded, revocable grant, a cross-scope ancestor contributes confidence without leaking
 content, a forget crosses the boundary, and interleaved writes produce one well-formed DAG.
 
-The normative text is [version1/SPEC.md](version1/SPEC.md): 23 numbered checks, one test
-each.
+The normative text is [version2/SPEC.md](version2/SPEC.md), draft v0.4: 24 numbered checks,
+one test each. [version1/SPEC.md](version1/SPEC.md) is frozen as the version the first
+results were produced against.
 
 ## The finding: erasure inflation
 
@@ -51,9 +52,13 @@ breaks, no error is raised, and the number a downstream reader trusts went up. U
 `tombstone` the chain position survives and the value does not move; under `cascade` the
 derivative does not survive to be inflated; under `erase` the inflation is guaranteed by
 construction. The suite reports it as a DIVERGENCE rather than scoring it, because
-[SPEC.md §6.4](version1/SPEC.md) leaves the tension open and each of the three obvious
-fixes costs something real. The same number is reachable with no deletion at all — see
-[taxonomy/](taxonomy/).
+[SPEC.md §6.4](version2/SPEC.md) leaves the tension open and every way out it prices costs
+something real. The same number is reachable with no deletion at all — see
+[taxonomy/](taxonomy/). To watch it happen in twenty lines:
+
+```
+python examples/erasure_inflation.py
+```
 
 ## Results
 
@@ -71,31 +76,73 @@ PASS only if every check in it passed. P2.5 is a single signed comparison,
 `effective_after <= effective_before`, with no branch on the mode: the divergence comes from
 the system's declared capabilities, not from the check expecting it.
 
+## How far one bad memory travels
+
+Three simulated agents — `support-triage`, `sre`, `platform` — share one store for twelve
+rounds. In round one, two conflicting beliefs about the same fact are written: the runbook's
+`p99 SLO is 250ms` at 0.95, and a chat message's `p99 SLO is 400ms` at 0.40. After that
+nothing is special-cased. The agents are deterministic policies over a seeded PRNG; there is
+no model in the loop.
+
+| arm | writes | inherited the 0.40 belief | declared ≥ 0.9 while effective ≤ 0.5 | depth |
+|---|---|---|---|---|
+| ungated | 36 | 17 (47%) | 8 (22%) | 6 |
+| gated (τ = 0.5) | 36 | 0 (0%) | 0 (0%) | 0 |
+
+Nearly half of everything written descended from the weaker of two beliefs nobody
+reconciled, and a fifth of it was stated at 0.9 or above while its effective confidence sat
+at 0.40. A read gate that withholds a memory whose *effective* confidence is below τ from
+being **cited** — it may still be read — removes the inheritance entirely, because the gate
+catches the second generation as well as the first. `make contamination` reproduces this;
+same seed, same bytes. Metrics and chart land in [results/](results/).
+
 ## Reproduce
 
 ```
 git clone https://github.com/ratnopam/agent-memory-reliability && cd agent-memory-reliability
-make reproduce
-make determinism
+make reproduce         # the suite, results/<today>/raw.json, the summary
+make determinism       # everything twice in fresh subprocesses, compared byte for byte
+make demo              # the declaration, the matrix, the divergence, the totals
+make contamination     # the three-role simulation, gated against ungated
 ```
 
 Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, and no model is
 called anywhere. `make determinism` runs the whole thing twice in fresh subprocesses and
-fails if a single byte of the results differs apart from the timestamp.
+fails if a single byte differs apart from the suite's timestamp.
+
+Every target is a wrapper over the `amr` command line, which is the actual interface:
+
+```
+pip install -e ".[test]"
+amr test | reproduce | determinism | demo | contamination | matrix
+```
+
+`amr matrix results/<date>/raw.json --svg` renders the matrix as a standalone SVG for a
+poster. [docs/demo.tape](docs/demo.tape) is a [vhs](https://github.com/charmbracelet/vhs)
+script for `docs/demo.gif`; the GIF is not committed, because a recording nobody generated
+from the tape is a claim nobody checked. Run `vhs docs/demo.tape` to make it.
 
 ## Add a system
 
-Write `systems/<name>/__init__.py` with an adapter implementing
-`harness.protocol.MemorySystem`, publish a `Capabilities` declaration, and call
-`harness.registry.register("<name>", Factory)`. The factory takes `default_forget_mode`. The
-suite is parameterised over every registered system and every mode it declares, so a new
-adapter adds columns without any test being edited. `SYSTEMS=<name> make test` runs one.
-Nothing in `harness/` or `properties/` names a system.
+Implement `amr.protocol.MemorySystem`, publish a `Capabilities` declaration, and declare an
+entry point from your own package — no edit to this repository:
+
+```toml
+[project.entry-points."amr.systems"]
+your-system = "your_package:factory"
+```
+
+The factory takes `default_forget_mode`. Install it alongside this one and the suite finds
+it. An adapter still under development can instead live in `systems/<name>/__init__.py` and
+call `amr.registry.register("<name>", Factory)`; the two sources are deduplicated by name,
+and a declared entry point wins. The suite is parameterised over every registered system and
+every mode it declares, so a new adapter adds columns without any test being edited.
+`SYSTEMS=<name> make test` runs one. Nothing in `src/amr/` or `properties/` names a system.
 
 ## Add a failure mode
 
 Write `taxonomy/repro/<slug>.py` with a `reproduce(system) -> dict` that uses
-`harness.protocol` only, write `taxonomy/<slug>.md` embedding that module's source in a
+`amr.protocol` only, write `taxonomy/<slug>.md` embedding that module's source in a
 `python` block, and register it in `properties/test_taxonomy.py`. The suite runs the
 reproduction against every registered system and asserts the embedded snippet is
 byte-identical to the code that ran, so an entry cannot drift from the behaviour it

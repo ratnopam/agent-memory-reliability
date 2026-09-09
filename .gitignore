@@ -225,3 +225,8 @@ __marimo__/
 
 # The build brief is the author's working document, not part of the published repo.
 design-notes/HANDOFF-*.md
+
+# Local agent and editor configuration. Untracked files count as a dirty tree when
+# `raw.json` stamps its git SHA, so anything local has to be ignored or the committed
+# results claim to come from a tree nobody can reproduce.
+.claude/

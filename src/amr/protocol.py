@@ -39,11 +39,12 @@ class ReadOutcome(str, Enum):
 
 
 class CycleError(Exception):
-    """Raised when a write would introduce a cycle. See SPEC.md I1.1."""
+    """Raised when a write, or a snapshot load, would close a cycle. SPEC.md I1.1.
 
-
-class ScopeError(Exception):
-    """Raised on an unauthorised cross-scope access. See SPEC.md I4.1."""
+    Also raised by an implementation opening a stored snapshot whose edges contain a
+    cycle. Where ids are store-assigned and writes are strict, that is the only place
+    the invariant is independently checkable (P1.7).
+    """
 
 
 class UnresolvedSourceError(Exception):
@@ -51,6 +52,17 @@ class UnresolvedSourceError(Exception):
 
     Distinct from ``CycleError`` because the two rejections are different checks
     (P1.1 and P1.6) and a caller repairs them differently.
+    """
+
+
+class ScopeError(Exception):
+    """Raised when a *visible* record is mutated by a scope that does not own it.
+
+    Deliberately narrow. An operation on a record the calling scope cannot see raises
+    ``LookupError``, exactly as an id that never existed would, because anything else is
+    an existence oracle (SPEC.md I4.1, 3.1). This error is only reachable when the
+    caller can already read the record through a grant, so it leaks nothing: a read
+    grant conveys reading, not ``revise`` and not ``forget``.
     """
 
 
@@ -161,6 +173,15 @@ class ForgetReceipt:
 
 
 @dataclass(frozen=True)
+class GrantReceipt:
+    """The record of a grant or a revocation. See SPEC.md I4.2."""
+
+    owner: Scope
+    reader: Scope
+    granted: bool
+
+
+@dataclass(frozen=True)
 class Capabilities:
     """Published by every adapter. See SPEC.md 8.
 
@@ -185,10 +206,10 @@ class Capabilities:
 class MemorySystem(Protocol):
     """The operations conformance is defined against. SPEC.md 3.
 
-    The eight operations of SPEC.md 3, plus ``capabilities`` and ``revisions``.
-    ``revisions`` is the reader for the history I2.6 requires to be retrievable
-    after the fact; SPEC.md 3 lists the writer (``revise``) but no reader, so P2.6
-    cannot be checked without it. See design-notes/spec-feedback.md.
+    Twelve operations: nine that read and write records, three that administer
+    cross-scope grants, plus ``capabilities``. Durability (I1.5) is the one invariant
+    still checked through an optional protocol, because closing and reopening a store is
+    a lifecycle concern rather than an operation on a record; see ``amr.extensions``.
     """
 
     def capabilities(self) -> Capabilities:
@@ -210,7 +231,7 @@ class MemorySystem(Protocol):
         """
 
     def get(self, memory_id: MemoryId, scope: Scope = "default") -> ReadResult:
-        ...
+        """OK, FORGOTTEN, or NOT_FOUND. A record this scope cannot see is NOT_FOUND."""
 
     def provenance(self, memory_id: MemoryId, scope: Scope = "default") -> Chain:
         """Transitive ancestor closure, each ancestor once (I1.2, I1.3)."""
@@ -255,7 +276,16 @@ class MemorySystem(Protocol):
         """``mode=None`` means the adapter's declared default."""
 
     def list_scope(self, scope: Scope = "default") -> frozenset[MemoryId]:
-        ...
+        """The records native to ``scope``. A granted record is readable, not listed."""
+
+    def grant(self, owner: Scope, reader: Scope) -> GrantReceipt:
+        """Let ``reader`` read records native to ``owner``. See SPEC.md I4.2."""
+
+    def revoke(self, owner: Scope, reader: Scope) -> GrantReceipt:
+        """Withdraw the grant. Revocation is immediate."""
+
+    def grants(self, owner: Scope) -> frozenset[Scope]:
+        """The reader scopes ``owner`` has granted. This is what a revocation changes."""
 
 
 def effective_confidence_reference(

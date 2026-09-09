@@ -1,6 +1,6 @@
 # MCP server
 
-An MCP server exposing the operation set of `version1/SPEC.md` §3 over one in-process
+An MCP server exposing the nine record operations of `version2/SPEC.md` §3 over one in-process
 `ReferenceSystem`. Stdio transport. It is a translation layer and nothing else: JSON in, a
 call into the system, JSON out, and a protocol error turned into a tool error with a coded
 prefix. Every decision that could be argued about lives in `systems/reference/`, where the
@@ -9,7 +9,7 @@ conformance suite can see it.
 ## Running it
 
 ```
-python -m pip install -r requirements-mcp.txt
+python -m pip install -e ".[mcp]"
 python mcp/server.py
 ```
 
@@ -52,14 +52,20 @@ shadow the installed one.
 | `memory_revisions` | The revision log, oldest first. The reader for what `memory_revise` records. |
 | `memory_forget` | `mode` defaults to the server default. The receipt names every affected memory and every confidence that moved. |
 | `memory_list_scope` | Memories native to a scope. A memory shared from elsewhere is readable but not listed. |
-| `memory_capabilities` | The declaration of `version1/SPEC.md` §8. |
+| `memory_capabilities` | The declaration of `version2/SPEC.md` §8. |
 
 Every tool takes `scope`, defaulting to `default`.
+
+The other three operations of §3 — `grant`, `revoke`, `grants` — are deliberately not
+tools. A client that can widen its own visibility is not isolated by anything. Grants are
+configuration, set by whoever runs the server.
 
 ## Errors
 
 A tool error's text begins with a code, so a client can branch without parsing English:
-`cycle`, `unresolved_source`, `forgotten`, `scope`, `not_found`, `invalid_argument`.
+`cycle`, `unresolved_source`, `forgotten`, `scope`, `not_found`, `invalid_argument`. A
+memory this scope cannot see is `not_found`, exactly as an id that was never assigned is;
+the `scope` code is reachable only when a grant already made the memory readable.
 Anything else escaping a tool is a bug in the server, and the SDK withholds its text from
 the caller.
 

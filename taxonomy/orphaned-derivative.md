@@ -31,7 +31,7 @@ Embedded verbatim from `taxonomy/repro/orphaned_derivative.py`:
 
 from __future__ import annotations
 
-from harness.protocol import ForgetMode, MemorySystem, ReadOutcome
+from amr.protocol import ForgetMode, MemorySystem, ReadOutcome
 
 
 def _observe(system: MemorySystem, derived: str) -> dict[str, object]:

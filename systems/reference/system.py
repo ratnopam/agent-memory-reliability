@@ -1,9 +1,10 @@
 """``ReferenceSystem`` -- the façade that implements ``MemorySystem``.
 
-It decides nothing on its own. Visibility questions go to ``scope``, arithmetic to
-``confidence``, deletion to ``forget``, and state to ``store``. What lives here is the
-translation between the specified operation set and those four modules, plus the
-capability declaration that makes divergence reportable.
+It decides nothing on its own. State and visibility go to ``store``, arithmetic to
+``confidence``, deletion to ``forget``. What lives here is the translation between the
+specified operation set and those three modules, the capability declaration that makes
+divergence reportable, and one resolver that fixes the order of the rejections in
+SPEC.md 3.1.
 
 The configured forget mode is a constructor argument, so a run of the suite is
 ``(system, forget_mode)`` and the divergence in P2.5 is produced by one flag.
@@ -12,17 +13,15 @@ The configured forget mode is a constructor argument, so a run of the suite is
 from __future__ import annotations
 
 import json
-from typing import Iterable
+from typing import Iterable, Mapping
 
-from harness.extensions import GrantReceipt
-from harness.protocol import (
+from amr.protocol import (
     Capabilities,
     Chain,
-    ChainNode,
-    ConfidenceDelta,
     ForgetMode,
     ForgetReceipt,
     ForgottenRecordError,
+    GrantReceipt,
     MemoryId,
     Origin,
     ReadOutcome,
@@ -31,17 +30,32 @@ from harness.protocol import (
     RevisionReceipt,
     Scope,
     ScopeError,
-    UnresolvedSourceError,
 )
 from systems.reference.confidence import ConfidenceIndex
-from systems.reference.forget import apply_forget
-from systems.reference.scope import chain_node, native_live_ids, owned, readable
+from systems.reference.forget import already_forgotten, apply_forget
 from systems.reference.store import Revision, Store, StoredRecord
 
 EMPTY_CHAIN = 1.0
 SYSTEM_NAME = "reference"
 SYSTEM_VERSION = "0.1.0"
 SNAPSHOT_FORMAT = "1"
+
+MODES = frozenset({ForgetMode.TOMBSTONE, ForgetMode.CASCADE, ForgetMode.ERASE})
+
+NOTES = (
+    (
+        "A foreign ancestor is opaque in a provenance walk whether or not a grant "
+        "exists; the grant governs get, not the walk."
+    ),
+    (
+        "A write may only cite sources the writing scope can read, and an unreadable "
+        "source is rejected as unresolvable rather than as a permission error."
+    ),
+    (
+        "revise and forget require ownership. A record the caller cannot see raises "
+        "LookupError, exactly as an unassigned id would."
+    ),
+)
 
 
 class ReferenceSystem:
@@ -54,15 +68,11 @@ class ReferenceSystem:
         self._confidence = ConfidenceIndex(self._store, EMPTY_CHAIN)
         self._default_mode = ForgetMode(default_forget_mode)
 
-    # ------------------------------------------------------------ declaration
-
     def capabilities(self) -> Capabilities:
         return Capabilities(
             system=SYSTEM_NAME,
             version=SYSTEM_VERSION,
-            supported_forget_modes=frozenset(
-                {ForgetMode.TOMBSTONE, ForgetMode.CASCADE, ForgetMode.ERASE}
-            ),
+            supported_forget_modes=MODES,
             default_forget_mode=self._default_mode,
             empty_chain_convention=EMPTY_CHAIN,
             revision="logged",
@@ -70,17 +80,10 @@ class ReferenceSystem:
             scopes="native",
             cross_scope_derivation="opaque-ancestor",
             durability="round-trip",
-            notes=(
-                (
-                    "A foreign ancestor is opaque in a provenance walk whether or not a "
-                    "grant exists; the grant governs get, not the walk."
-                ),
-                "A write may only cite sources the writing scope can read.",
-                "revise and forget require ownership of the record, not a read grant.",
-            ),
+            notes=NOTES,
         )
 
-    # ---------------------------------------------------------------- writes
+    # ------------------------------------------------------------------ writes
 
     def write(
         self,
@@ -90,28 +93,9 @@ class ReferenceSystem:
         scope: Scope = "default",
         origin: Origin | None = None,
     ) -> MemoryId:
-        source_ids = frozenset(sources)
-        for source_id in sorted(source_ids):
-            if (
-                self._store.record(source_id) is not None
-                and readable(self._store, source_id, scope) is None
-            ):
-                # A scope may only cite sources it can read; otherwise provenance
-                # becomes a side channel and one scope can pin another scope's record
-                # in place. An unreadable source is reported as unresolvable, not as a
-                # permission error, so that a write cannot be used as an existence
-                # oracle across the boundary either.
-                raise UnresolvedSourceError(
-                    f"source {source_id!r} does not resolve in scope {scope!r}"
-                )
-        record = self._store.add(
-            content=content,
-            declared_confidence=declared_confidence,
-            sources=source_ids,
-            scope=scope,
-            origin=origin,
-        )
-        return record.id
+        return self._store.add(
+            content, declared_confidence, sources, scope, origin
+        ).id
 
     def revise(
         self,
@@ -120,34 +104,26 @@ class ReferenceSystem:
         reason: str,
         scope: Scope = "default",
     ) -> RevisionReceipt:
-        record = self._require_owned_live(memory_id, scope)
+        record = self._resolve(memory_id, scope, owner_only=True)
+        if record is None or record.tombstoned:
+            raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
         if not 0.0 <= float(new_declared) <= 1.0:
             raise ValueError(
                 f"declared_confidence must be in [0.0, 1.0], got {new_declared}"
             )
-
+        after, before = float(new_declared), record.declared_confidence
         descendants = self._store.descendants(memory_id)
-        before_values = {d: self._confidence.effective(d) for d in descendants}
-        before = record.declared_confidence
-        self._store.set_declared(memory_id, float(new_declared))
-        self._confidence.invalidate([memory_id, *descendants])
+        was = self._confidence.snapshot(descendants)
 
-        deltas = tuple(
-            ConfidenceDelta(
-                id=descendant,
-                before=before_values[descendant],
-                after=self._confidence.effective(descendant),
-            )
-            for descendant in sorted(descendants)
-        )
-        revision = Revision(before=before, after=float(new_declared), reason=reason)
-        self._store.append_revision(memory_id, revision)
+        self._store.set_declared(memory_id, after)
+        self._confidence.invalidate([memory_id, *descendants])
+        self._store.append_revision(memory_id, Revision(before, after, reason))
         return RevisionReceipt(
             id=memory_id,
             before=before,
-            after=float(new_declared),
+            after=after,
             reason=reason,
-            deltas=deltas,
+            deltas=self._confidence.deltas(was, descendants),
         )
 
     def forget(
@@ -157,38 +133,45 @@ class ReferenceSystem:
         mode: ForgetMode | None = None,
     ) -> ForgetReceipt:
         chosen = self._default_mode if mode is None else ForgetMode(mode)
-        if chosen not in self.capabilities().supported_forget_modes:
+        if chosen not in MODES:
             raise ValueError(f"unsupported forget mode {chosen!r}")
-        return apply_forget(self._store, self._confidence, memory_id, scope, chosen)
+        record = self._resolve(memory_id, scope, owner_only=True)
+        if record is None or record.tombstoned:
+            return already_forgotten(self._store.forget_state(memory_id))
+        return apply_forget(self._store, self._confidence, record, chosen)
 
-    # ----------------------------------------------------------------- reads
+    # ------------------------------------------------------------------- reads
 
     def get(self, memory_id: MemoryId, scope: Scope = "default") -> ReadResult:
-        record = readable(self._store, memory_id, scope)
-        if record is not None:
-            if record.tombstoned:
-                return ReadResult(outcome=ReadOutcome.FORGOTTEN)
+        record = self._store.readable(memory_id, scope)
+        if record is None:
+            forgotten = self._store.visible_forgotten(memory_id, scope)
             return ReadResult(
-                outcome=ReadOutcome.OK,
-                record=Record(
-                    id=record.id,
-                    content=record.content,
-                    declared_confidence=record.declared_confidence,
-                    sources=record.sources,
-                    scope=record.scope,
-                    origin=record.origin,
-                ),
+                outcome=ReadOutcome.FORGOTTEN if forgotten else ReadOutcome.NOT_FOUND
             )
-        if self._forgotten_visible(memory_id, scope):
+        if record.tombstoned:
             return ReadResult(outcome=ReadOutcome.FORGOTTEN)
-        return ReadResult(outcome=ReadOutcome.NOT_FOUND)
+        return ReadResult(
+            outcome=ReadOutcome.OK,
+            record=Record(
+                id=record.id,
+                content=record.content,
+                declared_confidence=record.declared_confidence,
+                sources=record.sources,
+                scope=record.scope,
+                origin=record.origin,
+            ),
+        )
 
     def provenance(self, memory_id: MemoryId, scope: Scope = "default") -> Chain:
         self._require_walkable(memory_id, scope)
-        nodes: dict[MemoryId, ChainNode] = {}
-        for ancestor_id in sorted(self._store.ancestors([memory_id])):
-            nodes[ancestor_id] = chain_node(self._store.require(ancestor_id), scope)
-        return Chain(root_id=memory_id, nodes=nodes)
+        return Chain(
+            root_id=memory_id,
+            nodes={
+                ancestor: self._store.require(ancestor).chain_node(scope)
+                for ancestor in sorted(self._store.ancestors([memory_id]))
+            },
+        )
 
     def effective_confidence(
         self, memory_id: MemoryId, scope: Scope = "default"
@@ -203,31 +186,24 @@ class ReferenceSystem:
         return frozenset(
             descendant
             for descendant in self._store.descendants(memory_id)
-            if readable(self._store, descendant, scope) is not None
+            if self._store.readable(descendant, scope) is not None
         )
 
     def revisions(
         self, memory_id: MemoryId, scope: Scope = "default"
     ) -> tuple[RevisionReceipt, ...]:
-        record = readable(self._store, memory_id, scope)
+        record = self._resolve(memory_id, scope)
         if record is None:
-            if self._forgotten_visible(memory_id, scope):
-                raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
-            raise LookupError(f"{memory_id!r} does not resolve")
+            raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
         return tuple(
-            RevisionReceipt(
-                id=memory_id,
-                before=revision.before,
-                after=revision.after,
-                reason=revision.reason,
-            )
-            for revision in record.revisions
+            RevisionReceipt(memory_id, r.before, r.after, r.reason)
+            for r in record.revisions
         )
 
     def list_scope(self, scope: Scope = "default") -> frozenset[MemoryId]:
-        return native_live_ids(self._store, scope)
+        return self._store.native_live_ids(scope)
 
-    # ------------------------------------------------------------ ScopeSharing
+    # ------------------------------------------------------------------ grants
 
     def grant(self, owner: Scope, reader: Scope) -> GrantReceipt:
         if owner == reader:
@@ -239,8 +215,8 @@ class ReferenceSystem:
         self._store.drop_grant(owner, reader)
         return GrantReceipt(owner=owner, reader=reader, granted=False)
 
-    def grants(self) -> frozenset[tuple[Scope, Scope]]:
-        return self._store.grants()
+    def grants(self, owner: Scope) -> frozenset[Scope]:
+        return self._store.readers_of(owner)
 
     # -------------------------------------------------------------- Reopenable
 
@@ -253,63 +229,56 @@ class ReferenceSystem:
             "store": self._store.to_dict(),
         }
 
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> ReferenceSystem:
-        if payload.get("format") != SNAPSHOT_FORMAT:
-            raise ValueError(f"unsupported snapshot format {payload.get('format')!r}")
-        return cls(
-            default_forget_mode=ForgetMode(payload["default_forget_mode"]),
-            store=Store.from_dict(payload["store"]),  # type: ignore[arg-type]
+    def load(self, snapshot: Mapping[str, object]) -> ReferenceSystem:
+        """Build a system from any snapshot in ``to_dict`` form. See P1.7."""
+        if snapshot.get("format") != SNAPSHOT_FORMAT:
+            raise ValueError(f"unsupported snapshot format {snapshot.get('format')!r}")
+        return type(self)(
+            default_forget_mode=ForgetMode(snapshot["default_forget_mode"]),
+            store=Store.from_dict(snapshot["store"]),  # type: ignore[arg-type]
         )
 
     def reopen(self) -> ReferenceSystem:
-        """Serialise through JSON and back. See I1.5.
+        """Serialise through JSON and back (I1.5).
 
-        JSON rather than a direct ``from_dict(self.to_dict())`` because the round trip
-        is supposed to prove the snapshot could have been written to a file.
+        Through JSON rather than straight from ``to_dict``, because the round trip is
+        supposed to prove the snapshot could have been written to a file.
         """
-        return type(self).from_dict(json.loads(json.dumps(self.to_dict())))
+        return self.load(json.loads(json.dumps(self.to_dict())))
 
-    # ------------------------------------------------------------------ helpers
+    # ----------------------------------------------------------------- helpers
 
-    def _forgotten_visible(self, memory_id: MemoryId, scope: Scope) -> bool:
-        state = self._store.forget_state(memory_id)
-        if state is None:
-            return False
-        _, owner = state
-        return owner == scope or (owner, scope) in self._store.grants()
+    def _resolve(
+        self, memory_id: MemoryId, scope: Scope, owner_only: bool = False
+    ) -> StoredRecord | None:
+        """The record if this caller may see it; ``None`` if it is gone and they may know.
 
-    def _require_owned_live(
-        self, memory_id: MemoryId, scope: Scope
-    ) -> StoredRecord:
-        """The record, if the caller owns it and it has not been forgotten.
+        Rejections in the order SPEC.md 3.1 fixes. Absent first, as ``LookupError``, and
+        that one answer covers both "no such id" and "another scope's id" — distinguishing
+        them is an existence oracle. Then not-yours, as ``ScopeError``, reachable only
+        once the caller can already read the record.
 
-        A forgotten record is reported as forgotten before ownership is considered, so
-        that a caller is told what actually happened rather than being pointed at a
-        scope boundary that is not the problem.
+        "Forgotten" is returned rather than raised, because the callers disagree about
+        what it means: ``revise`` fails, a walk answers for a tombstone and fails for a
+        removed record, and ``forget`` is idempotent.
         """
-        state = self._store.forget_state(memory_id)
-        if state is not None:
-            _, owner = state
-            if owner != scope:
-                raise ScopeError(f"{memory_id!r} is not native to scope {scope!r}")
-            raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
-        record = owned(self._store, memory_id, scope)
-        if record is None:
-            if self._store.known(memory_id):
-                raise ScopeError(f"{memory_id!r} is not native to scope {scope!r}")
+        record = self._store.readable(memory_id, scope)
+        if record is not None:
+            owner = record.scope
+        elif self._store.visible_forgotten(memory_id, scope):
+            owner = self._store.forget_state(memory_id)[1]  # type: ignore[index]
+        else:
             raise LookupError(f"{memory_id!r} does not resolve")
+        if owner_only and owner != scope:
+            raise ScopeError(f"{memory_id!r} is native to another scope")
         return record
 
     def _require_walkable(self, memory_id: MemoryId, scope: Scope) -> None:
         """A walk needs a chain position, which a tombstone still has.
 
-        A record removed by ``cascade`` or ``erase`` has none, so walking it raises
-        rather than returning an empty chain: an empty chain would read as "no
-        ancestors", which is a different and more dangerous claim.
+        A record removed by ``cascade`` or ``erase`` has none, so walking it raises rather
+        than returning an empty chain: an empty chain reads as "no ancestors", which is a
+        different and more dangerous claim (SPEC.md 6.2).
         """
-        if readable(self._store, memory_id, scope) is not None:
-            return
-        if self._forgotten_visible(memory_id, scope):
+        if self._resolve(memory_id, scope) is None:
             raise ForgottenRecordError(f"{memory_id!r} has been forgotten")
-        raise LookupError(f"{memory_id!r} does not resolve")

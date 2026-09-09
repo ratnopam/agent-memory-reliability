@@ -14,7 +14,7 @@ from typing import Callable
 
 import pytest
 
-from harness.protocol import ForgetMode, MemorySystem
+from amr.protocol import ForgetMode, MemorySystem
 from taxonomy.repro import (
     erasure_inflation,
     orphaned_derivative,

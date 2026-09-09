@@ -6,8 +6,10 @@ the state a nondeterminism bug would hide in. Subprocesses get a fresh interpret
 and ``PYTHONHASHSEED`` is deliberately *not* pinned, so a result that depends on set
 iteration order fails here rather than in six months on someone else's machine.
 
-Compared: ``raw.json`` with the volatile fields removed, and ``summary.md`` with its
-generated-at line removed. The timestamp is the only thing allowed to differ.
+Compared: ``raw.json`` with the volatile fields removed, ``summary.md`` with its
+generated-at line removed, and the contamination scenario's ``contamination.json`` and
+``contamination.svg`` byte for byte, since neither carries a timestamp at all. The suite's
+generated-at line is the only thing allowed to differ.
 """
 
 from __future__ import annotations
@@ -21,9 +23,13 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness.results import SCHEMA_VERSION, VOLATILE_FIELDS, serialise, strip_volatile
+from amr.results import SCHEMA_VERSION, VOLATILE_FIELDS, serialise, strip_volatile
 
 GENERATED_PREFIX = "Generated "
+
+#: The seed ``make determinism`` runs the scenario at. Any seed would do; a fixed one
+#: means a failure here is reproducible by hand with the same command.
+CONTAMINATION_SEED = 7
 
 
 @dataclass(frozen=True)
@@ -38,8 +44,9 @@ class Comparison:
         if self.identical:
             return (
                 "determinism: two runs produced byte-identical results\n"
-                f"  compared raw.json (ignoring {', '.join(VOLATILE_FIELDS)}) "
-                "and summary.md (ignoring the generated-at line)\n"
+                f"  compared raw.json (ignoring {', '.join(VOLATILE_FIELDS)}), "
+                "summary.md (ignoring the generated-at line),\n"
+                "  and contamination.json and contamination.svg verbatim\n"
                 f"  schema {SCHEMA_VERSION}"
             )
         lines = ["determinism: FAILED — two runs of the same tree disagree"]
@@ -49,9 +56,9 @@ class Comparison:
         return "\n".join(lines)
 
 
-def _reproduce_into(root: Path, directory: Path) -> None:
+def _run_into(root: Path, directory: Path, *command: str) -> None:
     completed = subprocess.run(
-        [sys.executable, "-m", "harness", "reproduce", "--out", str(directory), "--quiet"],
+        [sys.executable, "-m", "amr", *command, "--out", str(directory), "--quiet"],
         cwd=root,
         capture_output=True,
         text=True,
@@ -60,9 +67,15 @@ def _reproduce_into(root: Path, directory: Path) -> None:
     )
     if completed.returncode != 0:
         raise RuntimeError(
-            "a determinism run did not finish cleanly "
+            f"a determinism run of {command[0]!r} did not finish cleanly "
             f"(exit {completed.returncode})\n{completed.stdout}\n{completed.stderr}"
         )
+
+
+def _produce_into(root: Path, directory: Path) -> None:
+    """Everything one run of the tree produces, into one directory."""
+    _run_into(root, directory, "reproduce")
+    _run_into(root, directory, "contamination", "--seed", str(CONTAMINATION_SEED))
 
 
 def _canonical_json(path: Path) -> str:
@@ -76,6 +89,11 @@ def _canonical_summary(path: Path) -> str:
         if not line.startswith(GENERATED_PREFIX)
     ]
     return "\n".join(kept) + "\n"
+
+
+def _verbatim(path: Path) -> str:
+    """No canonicalisation at all. The scenario's output carries nothing volatile."""
+    return path.read_text(encoding="utf-8")
 
 
 def _diff(name: str, left: str, right: str) -> str:
@@ -93,12 +111,14 @@ def compare_two_runs(root: Path) -> Comparison:
     with tempfile.TemporaryDirectory(prefix="amr-determinism-") as workspace:
         first = Path(workspace) / "run-1"
         second = Path(workspace) / "run-2"
-        _reproduce_into(root, first)
-        _reproduce_into(root, second)
+        _produce_into(root, first)
+        _produce_into(root, second)
         diffs: dict[str, str] = {}
         for name, canonicalise in (
             ("raw.json", _canonical_json),
             ("summary.md", _canonical_summary),
+            ("contamination.json", _verbatim),
+            ("contamination.svg", _verbatim),
         ):
             left = canonicalise(first / name)
             right = canonicalise(second / name)

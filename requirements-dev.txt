@@ -1,4 +1,0 @@
-# Everything the conformance suite needs. The list is short on purpose: the reference
-# implementation imports the standard library only, and a dependency here would end up
-# in the measurement path.
-pytest>=8.0,<10

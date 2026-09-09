@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import pytest
 
-from harness.outcomes import erasure_inflation_is_declared
-from harness.protocol import (
+from amr.outcomes import erasure_inflation_is_declared
+from amr.protocol import (
     Capabilities,
     ForgetMode,
     MemorySystem,
