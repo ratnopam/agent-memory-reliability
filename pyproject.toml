@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-memory-reliability"
+version = "0.1.0"
+description = "A conformance suite for four reliability properties of agent memory stores"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Ratnopam Chakrabarti" }]
+keywords = ["agent", "memory", "provenance", "confidence", "conformance"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Testing",
+]
+
+# No runtime dependencies, deliberately. The reference implementation is standard
+# library only (enforced in CI), the results writer and the report renderer use json
+# and re, and the SVG output is hand-written. pytest is the runner, not a runtime
+# requirement of the package, so it lives in an extra.
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8.0,<10"]
+mcp = ["mcp>=2.0,<3"]
+
+[project.urls]
+Homepage = "https://github.com/ratnopam/agent-memory-reliability"
+Specification = "https://github.com/ratnopam/agent-memory-reliability/blob/main/version2/SPEC.md"
+
+[project.scripts]
+amr = "amr.__main__:main"
+
+# Adapter discovery. The registry reads this group with importlib.metadata and also
+# imports the in-tree systems/*/ packages, deduplicating by name, so an external
+# distribution that declares the same group is found without any edit to this
+# repository. See src/amr/registry.py and properties/test_registry.py.
+[project.entry-points."amr.systems"]
+reference = "systems.reference:factory"
+
+[tool.setuptools]
+packages = [
+  "amr",
+  "systems",
+  "systems.reference",
+  "scenarios",
+  "scenarios.contamination",
+]
+
+[tool.setuptools.package-dir]
+amr = "src/amr"
+systems = "systems"
+scenarios = "scenarios"

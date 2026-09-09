@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness.outcomes import CheckOutcome
+from amr.outcomes import CheckOutcome
 
 MODE_ORDER = ("tombstone", "cascade", "erase")
 HEADLINE_CHECK = "P2.5"
@@ -144,31 +144,72 @@ def system_table(document: dict, spec: SpecText, system: str) -> list[str]:
     return _table(["Check", "Scenario", *modes], rows)
 
 
-def poster_matrix(document: dict, spec: SpecText, system: str) -> list[str]:
+@dataclass(frozen=True)
+class MatrixRow:
+    """One line of the poster matrix, before anyone decides what it looks like."""
+
+    label: str
+    cells: tuple[str, ...]
+    headline: bool = False
+
+
+def matrix_rows(
+    document: dict, spec: SpecText, system: str
+) -> tuple[list[str], list[MatrixRow]]:
+    """The compact matrix as data: mode columns, then one row per property plus P2.5.
+
+    One aggregation, three renderers — Markdown for summary.md, SVG for the poster,
+    aligned text for ``amr demo`` — so the screen and the file cannot disagree.
+    """
     runs = [run for run in document["runs"] if run["system"] == system]
+    if not runs:
+        raise ValueError(f"{system!r} has no runs in this results document")
     modes = modes_in(runs)
     by_mode = {run["forget_mode"]: outcomes_by_check(run) for run in runs}
     property_ids = sorted(
         {check.split(".")[0] for outcomes in by_mode.values() for check in outcomes}
     )
-    rows: list[list[str]] = []
-    for property_id in property_ids:
-        label = f"{property_id} — {spec.title(property_id)}"
-        cells = [label]
-        for mode in modes:
-            outcomes = [
-                outcome
-                for check, outcome in by_mode[mode].items()
-                if check.startswith(f"{property_id}.")
-            ]
-            cells.append(worst(outcomes))
-        rows.append(cells)
-    headline = [f"**{HEADLINE_CHECK} — {spec.scenario(HEADLINE_CHECK)}**"]
-    for mode in modes:
-        outcome = by_mode[mode].get(HEADLINE_CHECK, MISSING_CELL)
-        headline.append(f"**{outcome}**")
-    rows.append(headline)
-    return _table(["Property", *modes], rows)
+    rows = [
+        MatrixRow(
+            label=f"{property_id} — {spec.title(property_id)}",
+            cells=tuple(
+                worst(
+                    [
+                        outcome
+                        for check, outcome in by_mode[mode].items()
+                        if check.startswith(f"{property_id}.")
+                    ]
+                )
+                for mode in modes
+            ),
+        )
+        for property_id in property_ids
+    ]
+    rows.append(
+        MatrixRow(
+            label=f"{HEADLINE_CHECK} — {spec.scenario(HEADLINE_CHECK)}",
+            cells=tuple(
+                by_mode[mode].get(HEADLINE_CHECK, MISSING_CELL) for mode in modes
+            ),
+            headline=True,
+        )
+    )
+    return modes, rows
+
+
+def poster_matrix(document: dict, spec: SpecText, system: str) -> list[str]:
+    modes, rows = matrix_rows(document, spec, system)
+    return _table(
+        ["Property", *modes],
+        [
+            [_bold(row.label, row.headline), *[_bold(c, row.headline) for c in row.cells]]
+            for row in rows
+        ],
+    )
+
+
+def _bold(cell: str, when: bool) -> str:
+    return f"**{cell}**" if when else cell
 
 
 def divergence_lines(document: dict) -> list[str]:

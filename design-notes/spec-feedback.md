@@ -1,9 +1,14 @@
 # Spec feedback
 
-Every place `version1/SPEC.md` (v0.3) was ambiguous, silent, or self-contradicting while
-Phase 0 was built. Each entry names the section, what could not be decided from the text,
-what was implemented, why, and proposed replacement text. The specification itself was not
-edited.
+Every place the specification was ambiguous, silent, or self-contradicting while this
+repository was built. Each entry names the section, what could not be decided from the text,
+what was implemented, why, and proposed replacement text.
+
+**Entries 1–19** were raised against `version1/SPEC.md` (v0.3) during Phase 0, and that file
+was not edited: it is frozen as the version the first results were produced against. All
+nineteen are folded into `version2/SPEC.md` (v0.4 draft), some as modified — see its
+changelog. **Entries 20 onwards** were raised against v0.4 itself, and each is applied to
+`version2/SPEC.md` directly.
 
 Where a reading was available that rejects more, asserts more, or inflates less, that is
 the one implemented. **Nothing here is blocking**: every entry had a conservative reading
@@ -24,7 +29,7 @@ receipt from the original call has no way to obtain it, so P2.6 is unverifiable 
 operation set as written.
 
 **Choice.** Added `revisions(id, scope) -> tuple[RevisionReceipt, ...]`, oldest first, to
-`harness/protocol.py`, and P2.6 checks it. Two revisions are made and the whole log is
+`amr/protocol.py`, and P2.6 checks it. Two revisions are made and the whole log is
 asserted, not just the last entry.
 
 **Why.** "Recorded" that cannot be read is indistinguishable from "not recorded". Returning
@@ -49,7 +54,7 @@ value, after value, and reason."
 and revocation is immediate." P4.2 is "grant, read, revoke, read → visible then absent".
 There is no `grant`, no `revoke`, and no way to list what has been granted.
 
-**Choice.** Defined them as an optional protocol in `harness/extensions.py`
+**Choice.** Defined them as an optional protocol in `amr/extensions.py`
 (`ScopeSharing`: `grant`, `revoke`, `grants`), feature-detected with `isinstance` in the
 P4.2 check rather than added to the §3 set. A system that does not implement it fails P4.2
 rather than being excused, because I4.2 is not optional.
@@ -77,7 +82,7 @@ tests instead. The current text requires the behaviour and hides the mechanism.
 or reopens a store, and §8's `durability` field is not defined as a set of values.
 
 **Choice.** An optional `Reopenable` protocol (`to_dict`, `reopen`) in
-`harness/extensions.py`. `ReferenceSystem` serialises to canonical JSON and reopens from
+`amr/extensions.py`. `ReferenceSystem` serialises to canonical JSON and reopens from
 it, declaring `durability: "round-trip"`. P1.5 compares a canonical serialisation of the
 chain before and after the reopen, byte for byte.
 
@@ -341,9 +346,9 @@ made visible by a grant is readable by id but is not listed by the reading scope
 **Unclear.** Three states are defined, none of which is "did not run". A check that a system
 cannot support has no representation.
 
-**Choice.** A skipped or unrun check is a FAIL, and the harness additionally reports a
+**Choice.** A skipped or unrun check is a FAIL, and `amr` additionally reports a
 `missing_checks` list — a numbered check the specification declares that no test reported —
-which fails `make reproduce` as a harness defect rather than a system one.
+which fails `make reproduce` as a suite defect rather than a system one.
 
 **Why.** The failure mode this whole repository exists to make visible is a suite that
 reports a comfortable result for something it did not measure. "Not applicable" is the
@@ -413,3 +418,148 @@ nothing about the specification.
 
 **Proposed text.** Add to §5: "`empty_chain_convention` is declared (§8). Checks in this
 specification MUST be expressed in terms of the declaration rather than assuming a value."
+
+---
+
+Entries 20–24 were raised while building v0.4, the packaging, and the contamination
+scenario against the accepted entries above. Each is applied to `version2/SPEC.md`
+directly, as the v0.4 changelog records.
+
+---
+
+## 20. §7 / §3.1 — with invisibility total, is a scope error reachable at all?
+
+**Unclear, and self-contradicting as accepted.** Entry 6, as accepted, makes an invisible
+record indistinguishable from a nonexistent one for *every* operation, because a permission
+error on any operation is an existence oracle. Taken alone that removes the last case in
+which a scope error can be raised: every operation on a record the caller cannot see now
+answers `NotFound`. But I4.2 requires that a grant be revocable, and a grant that conveyed
+`revise` and `forget` along with `get` would leave `revoke` nothing to take back — the reader
+could have forgotten the record already.
+
+**Choice.** `ScopeError` survives with exactly one condition: the target *is* visible to the
+caller through a grant, and the caller does not own it. `revise` and `forget` are the only
+operations that can raise it, because they are the only two that change existing state.
+Ordering is `NotFound` first, then `ForgottenRecordError`, then `ScopeError`, so a caller
+learns that a record is forgotten or that it belongs to someone else only if it could have
+seen the record at all. The reference raises `LookupError` in every other case an earlier
+draft raised a scope error in.
+
+**Why.** This is the one place where the two accepted entries pull in opposite directions,
+and the narrow reading satisfies both: it leaks nothing, because it is reachable only once
+the caller can already read the record, and it keeps a read grant a grant of reading. The
+alternative — collapsing it into `NotFound` too — would tell a caller that the record it
+just read does not exist, which asserts something false.
+
+**Proposed text.** Applied: §3.1's `ScopeError` row and the second of its four
+consequences; I4.1's closing sentence.
+
+---
+
+## 21. §4 — entry 5 splits P1.1 in two and does not say what the second one is called
+
+**Silent.** Entry 5, as accepted, splits P1.1 into a write-side check (citing an id that has
+not been assigned) and a snapshot-side check (a stored graph whose edges contain a cycle),
+and says the count becomes 24. It does not say which id the new row takes. Renumbering
+P1.2–P1.6 upward would make the ids contiguous by property.
+
+**Choice.** The new row is **P1.7**, appended after the existing P1.6. P1.2 through P1.6
+keep the ids they had in v0.3.
+
+**Why.** A check id is a citation. The Phase 0 results in `results/2026-09-09/` name P1.5 and
+P1.6, and a poster, a build report, and any third-party result already produced against v0.3
+name them too; renumbering would silently repoint every one of those. Contiguity buys
+nothing that ordering in the table does not already give a reader. The cost is that P1.7
+reads out of place next to P1.1 — which is why §4's table keeps them adjacent in document
+order and the id is what carries across versions.
+
+**Proposed text.** Applied: §4's check table gains a P1.7 row at the end, in id order, and
+the paragraph below it says that P1.1 and P1.7 are the write-boundary and snapshot-boundary
+halves of I1.1 and why the new check took a new id rather than displacing P1.2–P1.6.
+
+---
+
+## 22. §5 / §7 — is effective confidence relative to the scope that asks?
+
+**Silent, and load-bearing.** `effective_confidence(id, scope)` takes a scope. §5 defines the
+value as a function of the graph, and I4.3 says a cross-scope ancestor contributes its
+confidence without its content, but nothing says whether a caller who cannot read an ancestor
+gets a number computed over it anyway. Both readings are available from the text.
+
+**Choice.** The value is scope-invariant: every scope that may read `m` at all gets the same
+number, computed over `m`'s full ancestor set, including ancestors the caller may not read.
+The scope argument decides *whether* the operation answers, never *what* it answers.
+
+**Why.** The reading that inflates less, by a wide margin. Under the alternative, a record's
+effective confidence would rise for a caller with narrower visibility — and would rise again
+the moment a grant were revoked, without any write, revision, or forget. That is exactly the
+§6.4 failure mode arriving through the grant table, and it would make the number unusable as
+a shared quantity between two agents, which is the whole premise of §7. It also makes the
+number cheap to check: one value per record, not one per (record, scope) pair.
+
+**Proposed text.** Applied as **I2.8**: "`effective_confidence(m, s)` returns the same value
+for every scope `s` that may read `m` at all. The walk crosses scope boundaries in full
+(I4.3), so an ancestor a caller cannot read still bounds the answer. A scope-relative number
+would rise as a caller's visibility narrowed, which is §6.4's inflation arriving through the
+grant table."
+
+---
+
+## 23. §6.1 / §9 — `residue` is declarable and no numbered check can tell it from `erase`
+
+**Silent, and the silence is a defect by entry 16.** §6.1 gains a fourth mode whose whole
+claim is that I2.5 holds without retaining anything. §6.3 has five checks, none of which
+mentions a floor, and §6.4 prices the mode but does not make it observable. A system could
+declare `residue`, implement `erase`, and pass every check in the document.
+
+**Choice.** No new numbered check, and the mode is not implemented here (it is out of scope
+for this phase by instruction). What was verified instead is that the existing checks are
+already written so that a `residue`-declaring system is measured rather than excused: P2.5 is
+the signed comparison `effective_after ≤ effective_before` with no branch on mode, so a
+correct `residue` implementation **passes** it and a `residue` declaration over `erase`
+behaviour **fails** it — not DIVERGENCE, because §6.4's open tension is what licenses a
+divergence and a mode that claims I2.5 holds has declared itself out of that tension. P3.3
+and P3.5 already require the declared mode's effect and a delta for every surviving
+descendant, so the floor shows up in the receipt. `amr.protocol.ForgetMode` has three members
+and would need a fourth before any adapter could declare the mode; that member is deliberately
+absent, because adding it while nothing implements it would put an unreachable column in the
+matrix.
+
+**Why.** The gap that remains is narrower than a missing check: the floor is observable
+through `effective_confidence` and through the receipt, but there is no operation that reads
+a record's floor directly, so "the floor composed correctly across two removals" and "the
+floor survived a reopen" — both required by §6.1 — can only be inferred from arithmetic. That
+is the same class of hole as entries 1 and 2, and it should be closed the same way, by adding
+a reader, before any system declares the mode.
+
+**Proposed text.** For a later revision, not applied: add `floors(id, scope) -> float | none`
+to §3, and two checks to §6.3 — "P3.6 Forget two ancestors under `residue` in either order"
+(same floor, order-independent) and "P3.7 Reopen after a `residue` forget" (floor retained).
+Until then §6.1 should say that a system declaring `residue` is conformant only to the extent
+its floors are visible in `effective_confidence`.
+
+---
+
+## 24. §8 — the declaration is normative and its serialised shape is not specified
+
+**Silent.** §8 requires a published capability declaration and gives an example, so two
+systems' declarations are meant to be compared, and a result file is meant to carry one. The
+example is illustrative JSON-ish text: nothing says whether a set-valued field such as
+`forget_modes` has an order, or whether an absent field and a null field mean the same thing.
+
+**Choice.** Set-valued fields are serialised sorted, every declared field is present with an
+explicit value rather than omitted, and the whole declaration is written as canonical JSON —
+sorted keys, fixed separators. Absence is not a value: a capability the system does not
+declare is a suite defect, not a default.
+
+**Why.** A declaration is the thing every divergence is adjudicated against, so it has to be
+byte-comparable between two runs and between two systems. `make determinism` compares
+`raw.json` byte for byte with one field stripped; an unordered set in the declaration would
+make that comparison fail intermittently under an unpinned `PYTHONHASHSEED`, which is
+precisely the bug the target exists to catch. Treating an absent field as a default would let
+a system be scored against capabilities it never claimed.
+
+**Proposed text.** Applied to §8: "A declaration MUST be serialisable to canonical JSON —
+sorted keys, sorted set-valued fields, fixed separators — and MUST state every field in this
+section explicitly. An omitted field is not a default: a checker that cannot read a field MUST
+report the declaration as invalid rather than assume a value for it."

@@ -29,7 +29,7 @@ Embedded verbatim from `taxonomy/repro/silent_chain_truncation.py`:
 
 from __future__ import annotations
 
-from harness.protocol import (
+from amr.protocol import (
     MemorySystem,
     UnresolvedSourceError,
     effective_confidence_reference,

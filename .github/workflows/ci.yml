@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
 
@@ -22,8 +22,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install the suite's only dependency
-        run: python -m pip install --quiet -r requirements-dev.txt
+      # Editable, with the test extra. This is also what registers the amr.systems
+      # entry point, so CI exercises the discovery path an external adapter would use
+      # rather than the in-tree fallback.
+      - name: Install
+        run: python -m pip install --quiet -e ".[test]"
 
       - name: Conformance suite
         run: make test
@@ -31,10 +34,17 @@ jobs:
       - name: Reproduce the results matrix
         run: make reproduce
 
+      - name: Contamination simulation
+        run: make contamination
+
       # A run whose results are not byte-identical to the run before it cannot support a
-      # claim on a poster. This step failing fails the build, on purpose.
+      # claim on a poster. This step failing fails the build, on purpose. It covers the
+      # suite and the simulation.
       - name: Determinism
         run: make determinism
+
+      - name: Demo surface still renders
+        run: make demo
 
       - name: Lint
         run: make lint
@@ -42,7 +52,7 @@ jobs:
       - name: No LLM in the measurement path
         run: |
           if grep -rniE '\b(import|from)[[:space:]]+(anthropic|openai|cohere|litellm|langchain|transformers)\b' \
-              --include='*.py' harness properties systems taxonomy mcp conftest.py; then
+              --include='*.py' src/amr properties systems scenarios examples taxonomy mcp conftest.py; then
             echo "an LLM client is imported somewhere the suite can reach it"
             exit 1
           fi
@@ -50,6 +60,20 @@ jobs:
 
       - name: The reference implementation imports the standard library only
         run: python .github/check_stdlib_only.py
+
+      # The results document is the artefact the claims are made from, so every matrix
+      # leg publishes its own copy and two legs can be diffed against each other.
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-py${{ matrix.python-version }}
+          path: |
+            results/**/raw.json
+            results/**/summary.md
+            results/**/contamination.json
+            results/**/contamination.svg
+          if-no-files-found: error
 
   mcp:
     runs-on: ubuntu-latest
@@ -61,9 +85,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: |
-          python -m pip install --quiet -r requirements-dev.txt
-          python -m pip install --quiet -r requirements-mcp.txt
+        run: python -m pip install --quiet -e ".[test,mcp]"
 
       - name: MCP stdio integration test
         run: python -m pytest mcp/ -v

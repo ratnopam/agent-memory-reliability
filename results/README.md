@@ -5,15 +5,22 @@
 - `raw.json` — the machine-readable record. Schema below.
 - `summary.md` — the human-readable tables, generated from `raw.json` alone.
 
+`make contamination` writes two more into the same directory, and appends its table to
+`summary.md`:
+
+- `contamination.json` — the simulation's parameters, seed, and both arms' metrics.
+- `contamination.svg` — the two-bar chart, hand-written, no plotting library.
+
 The date is UTC, matching `generated_at`. A directory is one day's results, overwritten if
-the harness runs twice in a day; the commit SHA inside tells you which tree produced it.
+`amr reproduce` runs twice in a day; the commit SHA inside tells you which tree produced it.
 
 ## Determinism
 
 Exactly one field in `raw.json` may differ between two runs of the same tree:
-`generated_at`. `make determinism` runs `reproduce` twice in separate subprocesses, strips
-that field, and requires the remaining bytes to be identical. `PYTHONHASHSEED` is not
-pinned, so anything that depends on set or dict iteration order fails there.
+`generated_at`. `make determinism` runs `reproduce` and `contamination` twice in separate
+subprocesses, strips that field, and requires the remaining bytes to be identical.
+`PYTHONHASHSEED` is not pinned, so anything that depends on set or dict iteration order fails
+there. The contamination files carry no timestamp at all and are compared verbatim.
 
 Everything else in the document is either a fact about the code under test or a fact about
 the environment. Durations, absolute paths, and iteration orders are deliberately absent.
@@ -52,7 +59,33 @@ suite_checks[]    Executed tests that belong to no (system, forget_mode) cell: c
                   whose answer cannot depend on a forget mode, and meta checks over the
                   specification and the taxonomy.
 missing_checks[]  Numbered checks the specification declares that a run did not report.
-                  Non-empty is a harness failure, and `make reproduce` exits non-zero.
+                  Non-empty is a suite defect, and `make reproduce` exits non-zero.
+```
+
+## contamination.json
+
+```
+scenario          "contamination".
+schema            "0.1".
+system            The registered system the simulation ran against.
+forget_mode       The mode the store was configured with. Nothing is forgotten during the
+                  run; the mode is recorded because it is part of the configuration.
+seed              The PRNG seed. `amr contamination --seed N` is the whole of the input.
+environment       As above. No generated_at: there is nothing volatile to strip.
+parameters        Roles, rounds, tau, the confidence distribution and its weights, the
+                  citation sizes, the hallucinated-citation rate, and both injected beliefs.
+arms
+  ungated         The agent sees declared confidence only and may cite anything it reads.
+  gated           A source whose *effective* confidence is below tau may be read, not cited.
+    denominator   Derived writes measured. The two injected roots are not counted.
+    inherited_count, inherited_fraction
+                  Writes whose provenance walk reaches the injected 0.40 belief.
+    inflated_count, inflated_fraction
+                  Writes declared at or above 0.9 whose effective confidence is at or
+                  below tau. The declared-versus-effective gap.
+    max_chain_depth
+                  Longest path beneath the 0.40 belief. The belief itself is depth 0.
+    totals        rounds, writes, reads, strict_write_rejections, abstentions.
 ```
 
 ## Outcomes
@@ -61,5 +94,5 @@ missing_checks[]  Numbered checks the specification declares that a run did not 
 behaviour the specification deliberately leaves open (SPEC.md 6.4) in a system whose
 capability declaration says it behaves that way. A divergence does not fail
 `make reproduce`; a build that went red on it would pressure whoever ran it to bury the
-finding. A `FAIL` — including a skipped test, which the harness counts as a failure —
+finding. A `FAIL` — including a skipped test, which counts as a failure —
 does fail it.

@@ -1,11 +1,17 @@
-"""Records, edges, scopes, grants, and the serialisation round-trip.
+"""Records, edges, scopes, grants, visibility, and the serialisation round-trip.
 
-Standard library only, dict-backed, and deliberately slow. The store is the only place
-that mutates state; confidence, forget, and scope logic all read through it.
+Standard library only, dict-backed, deliberately slow. The store is the only place that
+mutates state; confidence, forget, and the façade all read through it.
 
-Identifiers are opaque strings allocated in order (``m001``, ``m002``, ...). The counter
-only ever increases and survives serialisation, which is what makes "never reused after
-a forget" (SPEC.md 2) true rather than merely likely.
+Identifiers are allocated in order (``m001``, ``m002``, ...). The counter only ever
+increases and survives serialisation, which is what makes "never reused after a forget"
+(SPEC.md 2) true rather than merely likely.
+
+Visibility lives here because it is a question about stored state and there is no second
+answer to it. The rules are SPEC.md I4.1–I4.3 and 3.1, and the short version is: a viewer
+sees what it owns plus what a grant covers; anything else is reported exactly as an id
+that never existed; a foreign ancestor is opaque in a walk whether or not a grant exists;
+and mutation needs ownership, because a read grant grants reading.
 """
 
 from __future__ import annotations
@@ -13,7 +19,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from harness.protocol import (
+from amr.protocol import (
+    ChainNode,
     CycleError,
     ForgetMode,
     ForgottenRecordError,
@@ -29,10 +36,9 @@ STORE_FORMAT = "1"
 class StoreIntegrityError(Exception):
     """A source id held by a live record does not resolve.
 
-    This should be unreachable: strict writes (I1.6) reject unresolvable sources at
-    write time, and ``erase`` detaches edges rather than leaving them dangling. It is
-    raised rather than skipped because silently skipping an unresolvable ancestor is
-    exactly the failure mode in taxonomy/silent-chain-truncation.md.
+    Unreachable through the operation set: strict writes reject unresolvable sources
+    (I1.6) and ``erase`` detaches edges rather than orphaning them. Raised rather than
+    skipped, because skipping is taxonomy/silent-chain-truncation.md.
     """
 
 
@@ -56,6 +62,45 @@ class StoredRecord:
     tombstoned: bool = False
     revisions: list[Revision] = field(default_factory=list)
 
+    def chain_node(self, viewer: Scope) -> ChainNode:
+        """This record as a provenance node, from the viewer's side of the boundary."""
+        return ChainNode(
+            id=self.id,
+            declared_confidence=self.declared_confidence,
+            sources=self.sources,
+            tombstoned=self.tombstoned,
+            opaque=self.scope != viewer,
+        )
+
+
+def _as_dict(record: StoredRecord) -> dict[str, object]:
+    """One record, canonically: sorted sources, no set iteration order anywhere."""
+    origin = record.origin
+    return {
+        "id": record.id,
+        "content": record.content,
+        "declared_confidence": record.declared_confidence,
+        "sources": sorted(record.sources),
+        "scope": record.scope,
+        "origin": None if origin is None else {"kind": origin.kind, "ref": origin.ref},
+        "tombstoned": record.tombstoned,
+        "revisions": [dict(vars(r)) for r in record.revisions],
+    }
+
+
+def _from_dict(entry: dict) -> StoredRecord:
+    origin = entry["origin"]
+    return StoredRecord(
+        id=entry["id"],
+        content=entry["content"],
+        declared_confidence=float(entry["declared_confidence"]),
+        sources=frozenset(entry["sources"]),
+        scope=entry["scope"],
+        origin=None if origin is None else Origin(**origin),
+        tombstoned=bool(entry["tombstoned"]),
+        revisions=[Revision(**r) for r in entry["revisions"]],
+    )
+
 
 class Store:
     """The whole state of a reference memory system."""
@@ -68,12 +113,6 @@ class Store:
         self._scopes: set[Scope] = set()
         self._counter = 0
 
-    # ---------------------------------------------------------------- identity
-
-    def allocate_id(self) -> MemoryId:
-        self._counter += 1
-        return f"m{self._counter:03d}"
-
     # ------------------------------------------------------------------ writes
 
     def add(
@@ -84,29 +123,34 @@ class Store:
         scope: Scope,
         origin: Origin | None = None,
     ) -> StoredRecord:
-        """Create a record. Rejects rather than repairs. See I1.1, I1.6."""
+        """Create a record. Rejects rather than repairs. See I1.1, I1.6, SPEC.md 6.2."""
         if not 0.0 <= float(declared_confidence) <= 1.0:
             raise ValueError(
                 f"declared_confidence must be in [0.0, 1.0], got {declared_confidence}"
             )
         source_ids = frozenset(sources)
         for source_id in sorted(source_ids):
-            if source_id in self._records:
-                if self._records[source_id].tombstoned:
-                    raise ForgottenRecordError(
-                        f"cannot derive from forgotten record {source_id!r}"
-                    )
+            record = self.readable(source_id, scope)
+            if record is not None and not record.tombstoned:
                 continue
-            if source_id in self._forgotten:
+            if record is not None or self.visible_forgotten(source_id, scope):
+                # A tombstone keeps its chain position for records that already cited
+                # it; it does not accept new ones (SPEC.md 6.2).
                 raise ForgottenRecordError(
                     f"cannot derive from forgotten record {source_id!r}"
                 )
-            raise UnresolvedSourceError(f"source {source_id!r} does not resolve")
+            # Covers "no such id" and "someone else's id" with one answer: a
+            # distinguishable rejection would make a write an existence oracle across the
+            # scope boundary, and would let a writer pin a record it cannot read (I1.6).
+            raise UnresolvedSourceError(
+                f"source {source_id!r} does not resolve in scope {scope!r}"
+            )
 
-        record_id = self.allocate_id()
-        if record_id in source_ids or record_id in self.ancestors(source_ids):
-            # Unreachable while ids are freshly allocated and never reused. Kept as a
-            # guard because I1.1 is an invariant of the store, not of the allocator.
+        self._counter += 1
+        record_id = f"m{self._counter:03d}"
+        if record_id in self.ancestors(source_ids):
+            # Unreachable while ids are freshly allocated and never reused. Kept because
+            # I1.1 is an invariant of the store, not of the allocator.
             raise CycleError(f"{record_id!r} would be its own ancestor")
 
         record = StoredRecord(
@@ -138,53 +182,74 @@ class Store:
             raise StoreIntegrityError(f"{memory_id!r} does not resolve")
         return record
 
-    def is_forgotten(self, memory_id: MemoryId) -> bool:
-        return memory_id in self._forgotten
-
     def forget_state(self, memory_id: MemoryId) -> tuple[ForgetMode, Scope] | None:
         return self._forgotten.get(memory_id)
-
-    def known(self, memory_id: MemoryId) -> bool:
-        return memory_id in self._records or memory_id in self._forgotten
-
-    def ids(self) -> frozenset[MemoryId]:
-        return frozenset(self._records)
 
     def records(self) -> tuple[StoredRecord, ...]:
         """Every live or tombstoned record, ordered by id."""
         return tuple(sorted(self._records.values(), key=lambda r: r.id))
 
-    def scopes(self) -> frozenset[Scope]:
-        return frozenset(self._scopes)
-
     def children(self, memory_id: MemoryId) -> frozenset[MemoryId]:
         return frozenset(self._children.get(memory_id, ()))
 
     def ancestors(self, seeds: Iterable[MemoryId]) -> frozenset[MemoryId]:
-        """Transitive closure over ``sources``. Each ancestor once (I1.3)."""
-        seen: set[MemoryId] = set()
-        pending = [s for s in seeds]
-        while pending:
-            current = pending.pop()
-            if current in seen:
-                continue
-            seen.add(current)
-            record = self._records.get(current)
-            if record is not None:
-                pending.extend(record.sources)
-        return frozenset(seen)
+        """Closure over ``sources``, seeds included, each id once (I1.2, I1.3)."""
+        return self._closure(seeds, self._parents)
 
     def descendants(self, memory_id: MemoryId) -> frozenset[MemoryId]:
-        """Transitive closure over the reverse edge, across every scope."""
+        """Closure over the reverse edge, across every scope. Excludes the seed."""
+        return self._closure(self.children(memory_id), self.children)
+
+    def _parents(self, memory_id: MemoryId) -> frozenset[MemoryId]:
+        record = self._records.get(memory_id)
+        return record.sources if record is not None else frozenset()
+
+    @staticmethod
+    def _closure(seeds, step) -> frozenset[MemoryId]:
         seen: set[MemoryId] = set()
-        pending = list(self.children(memory_id))
+        pending = list(seeds)
         while pending:
             current = pending.pop()
             if current in seen:
                 continue
             seen.add(current)
-            pending.extend(self.children(current))
+            pending.extend(step(current))
         return frozenset(seen)
+
+    # -------------------------------------------------------------- visibility
+
+    def readable(self, memory_id: MemoryId, viewer: Scope) -> StoredRecord | None:
+        """The record if the viewer may see it at all, else ``None``.
+
+        "See it at all" includes tombstones: a tombstone is not readable content, but its
+        existence is not hidden from a scope that could see the record.
+        """
+        record = self._records.get(memory_id)
+        if record is None:
+            return None
+        if record.scope == viewer or (record.scope, viewer) in self._grants:
+            return record
+        return None
+
+    def visible_forgotten(self, memory_id: MemoryId, viewer: Scope) -> bool:
+        """Whether this viewer may be told the id was forgotten rather than absent."""
+        state = self._forgotten.get(memory_id)
+        if state is None:
+            return False
+        owner = state[1]
+        return owner == viewer or (owner, viewer) in self._grants
+
+    def native_live_ids(self, scope: Scope) -> frozenset[MemoryId]:
+        """What ``list_scope`` returns: native and not tombstoned (I3.2, SPEC.md 7).
+
+        Granted records are excluded. A grant makes a record readable, not resident, and
+        listing them would make ``list_scope`` a directory of another scope's contents.
+        """
+        return frozenset(
+            record.id
+            for record in self._records.values()
+            if record.scope == scope and not record.tombstoned
+        )
 
     # ---------------------------------------------------------------- mutation
 
@@ -218,8 +283,8 @@ class Store:
 
     # ------------------------------------------------------------------ grants
 
-    def grants(self) -> frozenset[tuple[Scope, Scope]]:
-        return frozenset(self._grants)
+    def readers_of(self, owner: Scope) -> frozenset[Scope]:
+        return frozenset(reader for granted, reader in self._grants if granted == owner)
 
     def add_grant(self, owner: Scope, reader: Scope) -> None:
         self._scopes.update({owner, reader})
@@ -241,71 +306,37 @@ class Store:
                 {"id": memory_id, "mode": mode.value, "scope": scope}
                 for memory_id, (mode, scope) in sorted(self._forgotten.items())
             ],
-            "records": [
-                {
-                    "id": record.id,
-                    "content": record.content,
-                    "declared_confidence": record.declared_confidence,
-                    "sources": sorted(record.sources),
-                    "scope": record.scope,
-                    "origin": (
-                        None
-                        if record.origin is None
-                        else {"kind": record.origin.kind, "ref": record.origin.ref}
-                    ),
-                    "tombstoned": record.tombstoned,
-                    "revisions": [
-                        {
-                            "before": revision.before,
-                            "after": revision.after,
-                            "reason": revision.reason,
-                        }
-                        for revision in record.revisions
-                    ],
-                }
-                for record in sorted(self._records.values(), key=lambda r: r.id)
-            ],
+            "records": [_as_dict(record) for record in self.records()],
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> Store:
+    def from_dict(cls, payload: dict) -> Store:
         store = cls()
         if payload.get("format") != STORE_FORMAT:
             raise ValueError(f"unsupported store format {payload.get('format')!r}")
-        store._counter = int(payload["counter"])  # type: ignore[arg-type]
-        store._scopes = set(payload.get("scopes", []))  # type: ignore[arg-type]
-        for owner, reader in payload.get("grants", []):  # type: ignore[union-attr]
-            store._grants.add((owner, reader))
-        for entry in payload.get("forgotten", []):  # type: ignore[union-attr]
-            store._forgotten[entry["id"]] = (
-                ForgetMode(entry["mode"]),
-                entry["scope"],
-            )
-        for entry in payload.get("records", []):  # type: ignore[union-attr]
-            origin = entry["origin"]
-            store._install(
-                StoredRecord(
-                    id=entry["id"],
-                    content=entry["content"],
-                    declared_confidence=float(entry["declared_confidence"]),
-                    sources=frozenset(entry["sources"]),
-                    scope=entry["scope"],
-                    origin=None if origin is None else Origin(**origin),
-                    tombstoned=bool(entry["tombstoned"]),
-                    revisions=[Revision(**r) for r in entry["revisions"]],
-                )
-            )
+        store._counter = int(payload["counter"])
+        store._scopes = set(payload.get("scopes", []))
+        store._grants = {(owner, reader) for owner, reader in payload.get("grants", [])}
+        for entry in payload.get("forgotten", []):
+            store._forgotten[entry["id"]] = (ForgetMode(entry["mode"]), entry["scope"])
+        for entry in payload.get("records", []):
+            store._install(_from_dict(entry))
         store._validate()
         return store
 
     def _validate(self) -> None:
-        """Reject a deserialised graph that is dangling or cyclic (I1.1, I1.4)."""
+        """Reject a deserialised graph that dangles or is cyclic (I1.1, I1.4, P1.7).
+
+        This is where I1.1 stays falsifiable. A write allocates its own id, so no write can
+        close a cycle; a snapshot's edges are caller-supplied and can. Dangling first, so
+        that a snapshot with both faults names the one a reader can act on.
+        """
         for record in self._records.values():
-            for source_id in record.sources:
-                if source_id not in self._records:
-                    raise StoreIntegrityError(
-                        f"{record.id!r} cites unresolvable source {source_id!r}"
-                    )
+            missing = record.sources - self._records.keys()
+            if missing:
+                raise StoreIntegrityError(
+                    f"{record.id!r} cites unresolvable source {min(missing)!r}"
+                )
         for record in self._records.values():
             if record.id in self.ancestors(record.sources):
                 raise CycleError(f"{record.id!r} is its own ancestor")

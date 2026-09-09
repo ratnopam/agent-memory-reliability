@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "systems" / "reference"
 
 #: The suite's own modules. Not third-party, and not the standard library either.
-OWN = {"harness", "systems"}
+OWN = {"amr", "systems"}
 
 #: Names that must not appear even if some environment happens to provide them.
 FORBIDDEN = {"sqlite3", "pgvector", "opensearch", "opensearchpy", "psycopg", "psycopg2"}

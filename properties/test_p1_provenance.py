@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from harness.extensions import Reopenable
-from harness.protocol import (
+from amr.extensions import Reopenable
+from amr.protocol import (
     CycleError,
     ForgetMode,
     ForgottenRecordError,
@@ -22,14 +22,15 @@ from properties.support import (
     assert_acyclic,
     assert_referentially_complete,
     canonical_chain,
+    snapshot_records,
 )
 
 UNKNOWN_ID = "no-such-id"
 
 
 @pytest.mark.check("P1.1")
-def test_p1_1_cycle_rejected(system: MemorySystem) -> None:
-    """P1.1 | Write a cycle-forming record | Rejected"""
+def test_p1_1_unassigned_id_rejected(system: MemorySystem) -> None:
+    """P1.1 | Write citing an id that has not been assigned | Rejected"""
     root = system.write("root", 0.9)
     leaf = system.write("leaf", 0.9, sources=[root])
 
@@ -150,3 +151,26 @@ def test_p1_6_unresolvable_source_rejected(system: MemorySystem) -> None:
     assert system.list_scope() == before, "a rejected write persists nothing"
     assert system.get(UNKNOWN_ID).outcome is ReadOutcome.NOT_FOUND
     assert system.descendants(root) == frozenset()
+
+
+@pytest.mark.check("P1.7")
+def test_p1_7_cyclic_snapshot_rejected(system: MemorySystem) -> None:
+    """P1.7 | Deserialise a store containing a cycle | Rejected"""
+    assert isinstance(system, Reopenable), (
+        "P1.7 loads a snapshot this instance did not produce; a system that cannot be "
+        "reopened cannot demonstrate I1.1 either, because no write can close a cycle"
+    )
+    root = system.write("root", 0.9)
+    leaf = system.write("leaf", 0.9, sources=[root])
+
+    snapshot = system.to_dict()
+    records = {entry["id"]: entry for entry in snapshot_records(snapshot)}
+    assert {root, leaf} <= set(records), "the snapshot names the records that were written"
+
+    # The one edge that closes the loop, added from outside: root <- leaf, on top of the
+    # leaf <- root the write already made. No sequence of writes can produce this, which
+    # is exactly why the invariant has to be checked here (I1.1 corollary, SPEC.md 4).
+    records[root]["sources"] = [leaf]
+
+    with pytest.raises(CycleError):
+        system.load(snapshot)

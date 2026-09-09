@@ -1,5 +1,9 @@
 # Phase 0 build report
 
+> Historical. Written during Phase 0, against `version1/SPEC.md`. Paths are as they were:
+> `harness/` became `src/amr/` in Phase 1 and the check count became 24. Left unedited
+> otherwise, because a build report that gets updated is not a record of anything.
+
 Built against `version1/SPEC.md` (23 numbered checks). No model is called anywhere in the
 measurement path; the suite's only dependency is pytest.
 
@@ -198,7 +202,7 @@ Full text in [DECISIONS.md](../DECISIONS.md).
 - Property rows aggregate pessimistically (FAIL > DIVERGENCE > PASS); the P2.5 row is
   printed separately because aggregation is exactly what would hide it.
 - One poster matrix per system rather than a merged table.
-- Grants and store-reopen are optional protocols in `harness/extensions.py`, not
+- Grants and store-reopen are optional protocols in `amr/extensions.py`, not
   additions to the §3 operation set.
 - Ids are `m001`, `m002`, … — sequential and readable, so a failing assertion names
   something a reader can find.
@@ -213,13 +217,14 @@ Full text in [DECISIONS.md](../DECISIONS.md).
 - `make` targets create a `.venv` only when the ambient interpreter lacks pytest, and
   never write outside the clone.
 - Each taxonomy entry embeds the verbatim source of a module the suite runs, asserted
-  byte-identical, and the reproductions import `harness.protocol` only.
+  byte-identical, and the reproductions import `amr.protocol` only.
 
 ## Not done
 
 Nothing from §4 is outstanding. Two notes, neither a gap in the deliverables:
 
-- The items §8 places out of scope are absent as instructed: no `systems/memledger/`, no
+- The items §8 places out of scope are absent as instructed: no adapter for the external
+  system it names, no
   contamination simulation, `SPEC.md` unedited, `SPEC-old.md` untouched, `LICENSE`
   unmodified.
 - The handoff brief itself is still in the working tree at
@@ -266,7 +271,7 @@ The results committed in `results/2026-09-09/` are the bytes that run produced.
    proposes text for both; the poster is stronger if the specification takes a side.
 2. Fold the 19 spec-feedback entries into `version1/SPEC.md` — chiefly the revision
    reader, grants, store reopen, and the durability vocabulary — so the two optional
-   protocols in `harness/extensions.py` become normative and P1.5/P2.6/P4.2 stop
+   protocols in `amr/extensions.py` become normative and P1.5/P2.6/P4.2 stop
    depending on feature detection.
 3. Register a second system. The matrix is one column wide, and the argument gets much
    sharper when a real product's capability declaration is next to the reference's; no

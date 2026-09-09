@@ -1,8 +1,10 @@
 # Build plan — Phase 0
 
+> Historical. `harness/` below became `src/amr/` in Phase 1.
+
 Order is dependency order. Each step ends with a green test run and a commit.
 
-## 1. `harness/protocol.py` (edit, additive only) + `harness/extensions.py` (new)
+## 1. `amr/protocol.py` (edit, additive only) + `amr/extensions.py` (new)
 
 `protocol.py` gains only what a numbered conformance check cannot be written without:
 `Origin` and `Record.origin` (SPEC §2.1), `write(..., origin=)`, `revisions(id, scope)`

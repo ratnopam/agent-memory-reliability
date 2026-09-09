@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from harness.protocol import Capabilities, ForgetMode
+from amr.protocol import Capabilities, ForgetMode
 
 #: Key under which a divergence is stamped into a pytest report's user properties.
 DIVERGENCE_PROPERTY = "amr-divergence"

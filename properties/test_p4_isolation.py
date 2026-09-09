@@ -15,12 +15,12 @@ from typing import Callable
 
 import pytest
 
-from harness.extensions import ScopeSharing
-from harness.protocol import (
+from amr.protocol import (
     Capabilities,
     ForgetMode,
     MemorySystem,
     ReadOutcome,
+    ScopeError,
     effective_confidence_reference,
 )
 from properties.interleavings import ALPHA, BETA, BY_KEY, PLAN, SCHEDULES, is_topological
@@ -31,13 +31,42 @@ from properties.support import (
     survives,
 )
 
+GRANT_OPERATIONS = ("grant", "revoke", "grants")
 
-def _sharing(system: MemorySystem, capabilities: Capabilities) -> ScopeSharing:
-    assert isinstance(system, ScopeSharing), (
+
+def _sharing(system: MemorySystem, capabilities: Capabilities) -> MemorySystem:
+    """SPEC.md 3 names the grant operations; a system missing one fails P4.2 here."""
+    missing = [name for name in GRANT_OPERATIONS if not callable(getattr(system, name, None))]
+    assert not missing, (
         f"the system declares scopes={capabilities.scopes!r}, so I4.2 requires a "
-        "recorded, revocable grant; no grant operation is exposed"
+        f"recorded, revocable grant; missing {', '.join(missing)}"
     )
     return system
+
+
+def _operations_on(system: MemorySystem, memory_id: str, scope: str) -> dict[str, object]:
+    """Every id-taking operation, invoked; the raised type or the returned value.
+
+    I4.1 makes an invisible record indistinguishable from a nonexistent one for *every*
+    operation, so the check has to call every operation. A rejection that names the scope
+    on any one of them is an existence oracle, and it does not matter which one.
+    """
+    calls = {
+        "get": lambda: system.get(memory_id, scope).outcome,
+        "provenance": lambda: system.provenance(memory_id, scope),
+        "effective_confidence": lambda: system.effective_confidence(memory_id, scope),
+        "descendants": lambda: system.descendants(memory_id, scope),
+        "revisions": lambda: system.revisions(memory_id, scope),
+        "revise": lambda: system.revise(memory_id, 0.1, "probe", scope),
+        "forget": lambda: system.forget(memory_id, scope),
+    }
+    observed: dict[str, object] = {}
+    for name, call in calls.items():
+        try:
+            observed[name] = call()
+        except Exception as error:
+            observed[name] = type(error)
+    return observed
 
 
 @pytest.mark.check("P4.1")
@@ -47,9 +76,15 @@ def test_p4_1_write_in_a_absent_in_b(system: MemorySystem) -> None:
 
     assert private in system.list_scope(ALPHA)
     assert private not in system.list_scope(BETA)
-    assert system.get(private, BETA).outcome is ReadOutcome.NOT_FOUND
-    with pytest.raises(LookupError):
-        system.provenance(private, BETA)
+
+    invisible = _operations_on(system, private, BETA)
+    unassigned = _operations_on(system, "no-such-id", BETA)
+
+    assert invisible["get"] is ReadOutcome.NOT_FOUND
+    assert invisible == unassigned, (
+        "a record this scope cannot see must behave exactly as an id that was never "
+        f"assigned; it does not: {invisible} vs {unassigned}"
+    )
 
 
 @pytest.mark.check("P4.2")
@@ -64,7 +99,7 @@ def test_p4_2_grant_then_revoke(
     sharing.grant(ALPHA, BETA)
     granted = system.get(shared, BETA)
 
-    assert (ALPHA, BETA) in sharing.grants()
+    assert BETA in sharing.grants(ALPHA)
     assert granted.outcome is ReadOutcome.OK
     assert granted.record is not None
     assert granted.record.content == "shared with beta"
@@ -75,7 +110,7 @@ def test_p4_2_grant_then_revoke(
 
     sharing.revoke(ALPHA, BETA)
 
-    assert (ALPHA, BETA) not in sharing.grants()
+    assert BETA not in sharing.grants(ALPHA)
     assert system.get(shared, BETA).outcome is ReadOutcome.NOT_FOUND
 
 
@@ -190,3 +225,27 @@ def test_p4_5_interleaved_writes(
     resolved = json.loads(distinct.pop())
     for step in PLAN:
         assert resolved[step.key]["sources"] == sorted(step.sources), "lost edge"
+
+
+@pytest.mark.extra("grant-conveys-reading-only")
+def test_grant_conveys_reading_only(
+    system: MemorySystem, capabilities: Capabilities
+) -> None:
+    """A read grant is a read grant: the reader cannot revise or forget what it can see.
+
+    The one place SPEC.md 3.1 still allows a scope error, and the reason it has to: with
+    no signal here, I4.2 would make ``grant`` a transfer of control rather than of read
+    access. It leaks nothing, because the caller can already read the record.
+    """
+    sharing = _sharing(system, capabilities)
+    shared = system.write("alpha's evidence", 0.9, scope=ALPHA)
+    sharing.grant(ALPHA, BETA)
+    assert system.get(shared, BETA).outcome is ReadOutcome.OK
+
+    with pytest.raises(ScopeError):
+        system.revise(shared, 0.1, "not beta's to revise", scope=BETA)
+    with pytest.raises(ScopeError):
+        system.forget(shared, scope=BETA)
+
+    assert system.get(shared, ALPHA).outcome is ReadOutcome.OK, "nothing was applied"
+    assert system.revisions(shared, ALPHA) == ()

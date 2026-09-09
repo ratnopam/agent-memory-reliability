@@ -32,7 +32,7 @@ Embedded verbatim from `taxonomy/repro/erasure_inflation.py`:
 
 from __future__ import annotations
 
-from harness.protocol import ForgetMode, MemorySystem
+from amr.protocol import ForgetMode, MemorySystem
 
 
 def reproduce(system: MemorySystem) -> dict[str, object]:

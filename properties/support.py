@@ -1,6 +1,6 @@
 """Helpers shared by the property modules.
 
-Everything here is written against ``harness.protocol`` only. Nothing imports an
+Everything here is written against ``amr.protocol`` only. Nothing imports an
 implementation, so a helper cannot accidentally encode the reference system's habits.
 """
 
@@ -10,7 +10,7 @@ import json
 import random
 from typing import Iterable, Sequence
 
-from harness.protocol import (
+from amr.protocol import (
     Chain,
     ForgottenRecordError,
     MemoryId,
@@ -179,3 +179,41 @@ def write_dag(
             )
         )
     return ids
+
+
+def snapshot_records(snapshot: object) -> list[dict]:
+    """The record list inside a ``to_dict`` snapshot, found without knowing the format.
+
+    I1.5 makes this much of the shape normative: somewhere in the structure is a list of
+    record objects, each with a string ``id`` and a list of string ``sources``. Finding it
+    generically is what lets P1.7 close a cycle in a snapshot from outside the
+    implementation, which is the only place the acyclicity invariant is falsifiable when
+    ids are store-assigned.
+    """
+    found: list[dict] = []
+
+    def looks_like_record(value: object) -> bool:
+        return (
+            isinstance(value, dict)
+            and isinstance(value.get("id"), str)
+            and isinstance(value.get("sources"), list)
+            and all(isinstance(source, str) for source in value["sources"])
+        )
+
+    def walk(node: object) -> None:
+        if isinstance(node, list):
+            if node and all(looks_like_record(entry) for entry in node):
+                found.append(node)  # type: ignore[arg-type]
+                return
+            for entry in node:
+                walk(entry)
+        elif isinstance(node, dict):
+            for value in node.values():
+                walk(value)
+
+    walk(snapshot)
+    assert len(found) == 1, (
+        "I1.5 requires a snapshot to expose exactly one list of record objects carrying "
+        f"a string id and a list of string sources; found {len(found)}"
+    )
+    return found[0]

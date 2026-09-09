@@ -36,7 +36,7 @@ Embedded verbatim from `taxonomy/repro/undeclared_derivation.py`:
 
 from __future__ import annotations
 
-from harness.protocol import MemorySystem
+from amr.protocol import MemorySystem
 
 
 def reproduce(system: MemorySystem) -> dict[str, object]:

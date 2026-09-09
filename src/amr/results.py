@@ -19,8 +19,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from harness.protocol import Capabilities
-from harness.runner import SuiteResult, missing_checks
+from amr.paths import SPEC_RELATIVE
+from amr.protocol import Capabilities
+from amr.runner import SuiteResult, missing_checks
 
 SCHEMA_VERSION = "0.1"
 
@@ -101,7 +102,7 @@ def build_document(result: SuiteResult, root: Path, timestamp: str | None = None
         "generated_at": timestamp or utc_now(),
         "environment": environment(root),
         "spec": {
-            "path": "version1/SPEC.md",
+            "path": SPEC_RELATIVE.as_posix(),
             "checks": list(result.check_ids),
         },
         "totals": result.counts(),
@@ -159,6 +160,6 @@ def load(path: Path) -> dict:
     schema = document.get("schema")
     if schema != SCHEMA_VERSION:
         raise ValueError(
-            f"{path} declares schema {schema!r}; this harness reads {SCHEMA_VERSION!r}"
+            f"{path} declares schema {schema!r}; amr reads {SCHEMA_VERSION!r}"
         )
     return document

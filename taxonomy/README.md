@@ -36,7 +36,7 @@ rediscovered.
 ## Adding an entry
 
 1. Write `taxonomy/repro/<slug>.py` with a `reproduce(system) -> dict` function that uses
-   `harness.protocol` only and names any forget mode explicitly.
+   `amr.protocol` only and names any forget mode explicitly.
 2. Write `taxonomy/<slug>.md` with the sections above, embedding the module source in a
    `python` fenced block.
 3. Register the module in `ENTRIES` in `properties/test_taxonomy.py` and assert the
