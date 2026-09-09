@@ -1,0 +1,3 @@
+# Only for mcp/. The conformance suite does not import this, and `make test`,
+# `make reproduce`, and `make determinism` all pass without it installed.
+mcp>=2.0,<3
