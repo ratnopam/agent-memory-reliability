@@ -222,3 +222,6 @@ __marimo__/
 .AppleDouble
 .LSOverride
 ._*
+
+# The build brief is the author's working document, not part of the published repo.
+design-notes/HANDOFF-*.md
