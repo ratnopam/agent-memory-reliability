@@ -15,7 +15,7 @@ in one command and is green, in this working tree and in a fresh clone.
   I3.4 statable under `cascade`, `erase` and `residue`, and §6.1's "removed completely —
   content, `id`, and edges" is corrected accordingly. **F2** "recompute derivatives to zero" is
   gone from §6.4's list of resolutions and is open question 10 instead: it was never a
-  declarable mode, and listing it beside three that are implied that it was. **F3** two checks
+  declarable mode, and listing it beside three that are implied otherwise. **F3** two checks
   added, taking 24 to **26**. **F4** §3's "the only two operations that change state" is
   reworded — it was written before `grant` existed. **F5** `revisions` added to the
   `ForgottenRecordError` and `NotFound` rows of §3.1. **F6** P2.5 gains a note that a mode which
@@ -76,7 +76,7 @@ in one command and is green, in this working tree and in a fresh clone.
 
 **97 tests: 96 PASS, 0 FAIL, 1 DIVERGENCE.** `make reproduce` exits 0, `missing_checks` is
 empty, `test_spec_coverage.py` reports 26 checks mapped one-to-one onto marked tests, and
-`make demo` still renders in exactly 15 lines.
+`amr demo` still renders in exactly 15 lines.
 
 Declared by the reference, unchanged: forget modes cascade, erase, tombstone; default
 `tombstone`; empty chain 1.0; revision `logged`, raising supported; scopes `native`;
@@ -203,7 +203,7 @@ machine is not the bottleneck.
 
 ## Release readiness
 
-`make release-check`, in this working tree at `7b74d11`:
+`make release-check`, in this working tree at `3b49574`:
 
 ```
 conformance suite                 ok
@@ -321,7 +321,7 @@ the category the open-questions section exists to hold.
 
 ## Verification
 
-Fresh clone into `/tmp` from the committed tree at `7b74d11`, ambient Python 3.14.6 with no
+Fresh clone into `/tmp` from the committed tree at `3b49574`, ambient Python 3.14.6 with no
 pytest, so `make deps` built a `.venv` from the `[test]` extra and nothing else:
 
 ```
