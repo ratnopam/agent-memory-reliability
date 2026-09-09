@@ -39,11 +39,11 @@ def marked_tests() -> dict[str, list[str]]:
 
 
 def test_every_spec_check_has_exactly_one_test() -> None:
-    """The 24 numbered checks map one-to-one onto marked test functions."""
+    """The 26 numbered checks map one-to-one onto marked test functions."""
     spec_ids = spec_check_ids()
     assert len(spec_ids) == len(set(spec_ids)), f"duplicate rows in {SPEC.name}"
-    assert len(spec_ids) == 24, (
-        f"expected 24 checks in {SPEC.name}, found {len(spec_ids)}"
+    assert len(spec_ids) == 26, (
+        f"expected 26 checks in {SPEC.name}, found {len(spec_ids)}"
     )
 
     found = marked_tests()

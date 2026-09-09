@@ -28,20 +28,9 @@ from properties.support import (
     assert_acyclic,
     assert_referentially_complete,
     readable_graph,
+    sharing_system,
     survives,
 )
-
-GRANT_OPERATIONS = ("grant", "revoke", "grants")
-
-
-def _sharing(system: MemorySystem, capabilities: Capabilities) -> MemorySystem:
-    """SPEC.md 3 names the grant operations; a system missing one fails P4.2 here."""
-    missing = [name for name in GRANT_OPERATIONS if not callable(getattr(system, name, None))]
-    assert not missing, (
-        f"the system declares scopes={capabilities.scopes!r}, so I4.2 requires a "
-        f"recorded, revocable grant; missing {', '.join(missing)}"
-    )
-    return system
 
 
 def _operations_on(system: MemorySystem, memory_id: str, scope: str) -> dict[str, object]:
@@ -92,7 +81,7 @@ def test_p4_2_grant_then_revoke(
     system: MemorySystem, capabilities: Capabilities
 ) -> None:
     """P4.2 | Grant, read, revoke, read | Visible then absent"""
-    sharing = _sharing(system, capabilities)
+    sharing = sharing_system(system, capabilities)
     shared = system.write("shared with beta", 0.9, scope=ALPHA)
     assert system.get(shared, BETA).outcome is ReadOutcome.NOT_FOUND
 
@@ -117,7 +106,7 @@ def test_p4_2_grant_then_revoke(
 @pytest.mark.check("P4.3")
 def test_p4_3_opaque_ancestor(system: MemorySystem, capabilities: Capabilities) -> None:
     """P4.3 | Cross-scope derivation, walk from B | Ancestor id present, content withheld"""
-    sharing = _sharing(system, capabilities)
+    sharing = sharing_system(system, capabilities)
     upstream = system.write("alpha's weak evidence", 0.3, scope=ALPHA)
     sharing.grant(ALPHA, BETA)
     derived = system.write(
@@ -145,7 +134,7 @@ def test_p4_4_cross_scope_forget(
     system: MemorySystem, capabilities: Capabilities, mode: ForgetMode
 ) -> None:
     """P4.4 | Forget in A with descendants in B | Declared mode applied across the boundary"""
-    sharing = _sharing(system, capabilities)
+    sharing = sharing_system(system, capabilities)
     upstream = system.write("alpha's evidence", 0.3, scope=ALPHA)
     sharing.grant(ALPHA, BETA)
     derived = system.write("beta's conclusion", 0.9, sources=[upstream], scope=BETA)
@@ -182,7 +171,7 @@ def test_p4_5_interleaved_writes(
     for schedule in SCHEDULES:
         assert is_topological(schedule), f"{schedule} is not a valid write order"
         system = make_system()
-        sharing = _sharing(system, capabilities)
+        sharing = sharing_system(system, capabilities)
         sharing.grant(ALPHA, BETA)
 
         ids: dict[str, str] = {}
@@ -227,17 +216,20 @@ def test_p4_5_interleaved_writes(
         assert resolved[step.key]["sources"] == sorted(step.sources), "lost edge"
 
 
-@pytest.mark.extra("grant-conveys-reading-only")
-def test_grant_conveys_reading_only(
+@pytest.mark.check("P4.6")
+def test_p4_6_grant_conveys_reading_only(
     system: MemorySystem, capabilities: Capabilities
 ) -> None:
-    """A read grant is a read grant: the reader cannot revise or forget what it can see.
+    """P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied
 
     The one place SPEC.md 3.1 still allows a scope error, and the reason it has to: with
     no signal here, I4.2 would make ``grant`` a transfer of control rather than of read
     access. It leaks nothing, because the caller can already read the record.
+
+    The negative half matters as much as the exception: a store that raised ``ScopeError``
+    after applying the change would satisfy a check that only looked for the raise.
     """
-    sharing = _sharing(system, capabilities)
+    sharing = sharing_system(system, capabilities)
     shared = system.write("alpha's evidence", 0.9, scope=ALPHA)
     sharing.grant(ALPHA, BETA)
     assert system.get(shared, BETA).outcome is ReadOutcome.OK
@@ -247,5 +239,8 @@ def test_grant_conveys_reading_only(
     with pytest.raises(ScopeError):
         system.forget(shared, scope=BETA)
 
-    assert system.get(shared, ALPHA).outcome is ReadOutcome.OK, "nothing was applied"
+    owner_view = system.get(shared, ALPHA)
+    assert owner_view.outcome is ReadOutcome.OK, "nothing was applied"
+    assert owner_view.record is not None
+    assert owner_view.record.declared_confidence == 0.9, "the revise did not land"
     assert system.revisions(shared, ALPHA) == ()

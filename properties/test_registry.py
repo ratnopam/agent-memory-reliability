@@ -53,13 +53,17 @@ def _install(directory: Path, entry_points: str) -> None:
 
 
 @pytest.fixture
-def installed(tmp_path: Path) -> Iterator[callable]:
+def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[callable]:
     """Install a throwaway distribution, then put the process back as it was.
 
     The registry memoises discovery in module state, which is right for a suite run and
     wrong for a test that changes what is discoverable, so the state is saved and restored
     around the whole thing.
+
+    ``SYSTEMS`` is cleared for the duration: these two are checks on discovery itself, and
+    what a caller happened to select is not part of what they are asking.
     """
+    monkeypatch.delenv("SYSTEMS", raising=False)
     saved = (dict(registry._REGISTRY), dict(registry._SOURCES), registry._DISCOVERED)
     saved_path = list(sys.path)
 

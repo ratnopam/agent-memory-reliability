@@ -563,3 +563,253 @@ a system be scored against capabilities it never claimed.
 sorted keys, sorted set-valued fields, fixed separators — and MUST state every field in this
 section explicitly. An omitted field is not a default: a checker that cannot read a field MUST
 report the declaration as invalid rather than assume a value for it."
+
+---
+
+Entries 25–33 were raised against v0.4 by a reader of the finished v0.4 draft and the Phase 1
+build, and each is applied to `version2/SPEC.md` directly, as the v0.5 changelog records.
+They are numbered here in the order the reader raised them (F1–F9), not in document order.
+
+---
+
+## 25. §6.1 / §6.2 — `erase` and `residue` remove the id, and I3.1 and I3.4 need it
+
+**Self-contradicting.** §6.1 says `residue` removes the record "completely — content, `id`,
+and edges", and `erase` "the record and its edges". §6.2 then requires, of *every* mode, that
+`get(x)` return `Forgotten` rather than `NotFound` (I3.1) and that no later write restore
+`x`'s identifier (I3.4). Both are statements about `x`, so both need `x` to still be
+distinguishable from an id that was never assigned. A store that discarded the id could only
+answer `NotFound`, which I3.1 forbids, and could not detect a resurrection at all.
+
+**Choice.** Every mode retains the forgotten record's id in a forgotten-id set. §6.1's
+wording is corrected: what `erase` and `residue` remove is content and edges; the id survives
+as a bare marker. The reference already behaved this way — `Store._forgotten` is populated by
+`remove()` under every mode, keyed by id, holding the mode and the owning scope and nothing
+else — so this is the spec catching up with the only implementation that satisfies §6.2.
+
+**Why.** The strict reading of §6.2 wins over the loose reading of §6.1, because §6.2 says
+"independent of mode" and is the section that states the invariants. The id is also the
+cheapest thing in the record to keep: it is opaque, it carries no content, no confidence, and
+no edge, and a reader who holds it learns only that something was there and is gone —
+which is exactly what I3.1 is *for*. Retaining it is not retaining the record. The distinction
+matters for the deletion obligation §6.4 weighs: a forgotten-id set is not a tombstone,
+because a tombstone answers `provenance` and `effective_confidence` and a marker answers
+neither.
+
+**Proposed text.** Applied. §6.2 opens with: "Every mode retains the forgotten record's `id`
+in a forgotten-id set, so that I3.1 and I3.4 hold. The id is opaque and carries no content,
+confidence, or edge; retaining it is not retaining the record." §6.1's `erase` and `residue`
+bullets are reworded to "content and edges removed; the id survives only as a forgotten-id
+marker", and §6.4's `residue` paragraph says the mode retains nothing about the removed record
+"beyond the forgotten-id marker every mode keeps".
+
+---
+
+## 26. §6.4 — "recompute derivatives to zero" is listed beside three declarable modes
+
+**Miscategorised.** §6.4 lists four resolutions to the erasure-inflation tension. Three of
+them — tombstone everything, cascade always, `residue` — are declarable forget modes in §6.1.
+The fourth, "recompute derivatives to zero", is not a mode, is not in §6.1, has no
+post-condition in §6.2, and no check could tell a system that does it from one that does not.
+A reader working through §6.4 as a menu would reasonably expect to be able to declare it.
+
+**Choice.** Removed from §6.4's list. Preserved as **open question 10**, in one sentence,
+carrying the objection that was already recorded against it: an unrelated forget request
+would silently zero out conclusions no one asked about.
+
+**Why.** The strict reading of the list is that its members are choices an implementation can
+make and declare, and by entry 16 there is no such thing as a resolution the suite cannot
+observe. Deleting the sentence outright would lose a real design option; promoting it to a
+mode would put a fifth column in the matrix that nothing implements — the objection entry 23
+already makes against adding a `ForgetMode.RESIDUE` member. An open question is the one place
+in the document where an unresolved option is allowed to sit without implying it is
+declarable.
+
+**Proposed text.** Applied. The bullet is gone from §6.4; open question 10 reads: "Should a
+forget be permitted to recompute derivatives to zero? It is defensible — nothing downstream
+inflates and nothing is retained — but an unrelated forget request would then silently zero
+out conclusions no one asked about, so it is recorded as a question rather than offered as a
+mode."
+
+---
+
+## 27. §5 / §7 — I2.8 has no check, and the one reachable scope error is unnumbered
+
+**Silent, and a defect by entry 16 twice over.** Entry 22 added I2.8, which makes effective
+confidence scope-invariant, and added no check: a system could compute a scope-relative
+number and pass every numbered check in §5. Entry 20 narrowed `ScopeError` to exactly one
+reachable condition — a granted, non-owned record being mutated — and that condition is
+verified only by a supplementary check, `grant-conveys-reading-only`, which by §9 is not part
+of the conformance matrix.
+
+**Choice.** Two numbered checks. **P2.8** — "Read `effective_confidence` of a record from its
+owner scope and from a granted reader scope → identical values". **P4.6** — "Reader with a
+grant attempts `revise` and `forget` on the owner's record → `ScopeError`; owner's record
+unchanged; revisions unchanged". The existing supplementary test becomes P4.6 rather than
+being duplicated, so the supplementary count drops by one as the numbered count rises by two.
+Twenty-four checks become twenty-six.
+
+**Why.** An invariant with no check is exactly the hole entries 1 and 2 describe, and both of
+these invariants are load-bearing for something else in the document: I2.8 is what keeps a
+revocation from inflating a number (entry 22's argument), and the scope error is what keeps a
+read grant from conveying write access (entry 20's argument). P4.6 asserts the negative as
+well as the error — the owner's record unchanged and the revision log still empty — because a
+store that raised `ScopeError` *after* applying the change would pass a check that only looked
+for the exception. Neither check needed a line of the reference: effective confidence is
+computed by `ConfidenceIndex` with no scope argument, and `_resolve(..., owner_only=True)`
+already orders `LookupError` before `ScopeError`.
+
+**Proposed text.** Applied. §5's check table gains the P2.8 row; §7's gains the P4.6 row.
+
+---
+
+## 28. §3 — "the only two operations that change state" was written before `grant` existed
+
+**Stale.** §3 says `revise` and `forget` are the only operations that change existing state.
+That was true in v0.3. Entry 2 added `grant` and `revoke`, which change the grant table, and
+the grant table is state — it is what I4.2 requires be observable and revocable. Read
+literally, §3 now contradicts §7.
+
+**Choice.** Reworded to name what is changed: "`revise` and `forget` are the only operations
+that change a record's state. `grant` and `revoke` change the grant table and no record."
+
+**Why.** The sentence is doing real work and the fix is to sharpen it, not drop it. Its
+purpose is to bound where a record can change from underneath a caller, which is what entry
+20's error ordering and P4.6 both rest on; and the *reason* a grant cannot raise a scope error
+on a record is that it never touches one. Saying "a record's state" makes both halves true at
+once, and makes the grant table's separateness explicit rather than implied.
+
+**Proposed text.** Applied to §3.
+
+---
+
+## 29. §3.1 — `revisions` is missing from two rows of the error table
+
+**Silent, and inconsistent with the rows around it.** §3.1's `ForgottenRecordError` row lists
+`write`, `revise`, `provenance`, `effective_confidence`, and `descendants`. `revisions` is
+absent, though it is a reader over retained state exactly like `provenance` and I4.1 names it
+in its list of operations that must fail for an invisible record. The `NotFound` row says
+"every operation taking an `id`", which covers `revisions` only by inference.
+
+**Choice.** `revisions` added to the `ForgottenRecordError` row's operation list, with the
+same tombstone rule as the readers beside it: it answers for a tombstone, which retains its
+recorded history, and fails for a record removed by `cascade`, `erase`, or `residue`. The
+`NotFound` row is made explicit — "every operation taking an `id`, `revisions` included".
+
+**Why.** A reader building an adapter works from this table, and an operation absent from a
+row is most naturally read as an operation exempt from it. Under the strict reading there is
+no exemption: `revisions` reads state the record still has, so it behaves like `provenance`.
+The tombstone half also has to be said, because "recorded history" is retained state and a
+tombstone is defined by §6.1 as keeping its `declared_confidence` and `sources` — nothing
+there says whether the revision log goes with the content or with the chain position. It goes
+with the chain position.
+
+**Proposed text.** Applied to both rows of §3.1.
+
+---
+
+## 30. §5 — P2.5 under a mode that removed the record it compares
+
+**Unclear, and it looks like a hole.** P2.5 is `effective_after ≤ effective_before` for the
+descendant of a forgotten record. Under `cascade` the descendant is gone, so there is no
+`effective_after` to read — and by entry 16 there is no not-applicable state, so a reader is
+entitled to ask which of PASS or FAIL that is.
+
+**Choice.** It passes, vacuously, and the specification now says so and says where the
+removal is verified instead: the receipt, P3.5. The test already behaved this way and was
+confirmed rather than changed — `test_p2_5_no_inflation_on_removal` builds its `after` mapping
+only over records for which `survives(system, memory_id)` holds, with a comment saying
+"Survival, not mode: a record that did not survive cannot be inflated". Nothing in it branches
+on the forget mode.
+
+**Why.** The alternative — FAIL for a removed descendant — would make `cascade` fail a check
+about inflation for the reason that it inflates nothing, which inverts the finding. The
+vacuous pass is only honest if something else establishes that the removal happened, which is
+why the note names P3.5: between them, P2.5 says nothing inflated and P3.5 says the declared
+mode was applied and every surviving descendant has a delta. Neither check alone is enough and
+neither needs to know the mode.
+
+**Proposed text.** Applied to §5's note under the check table: "If the declared mode removed
+the leaf, the comparison has no right-hand side and the check passes vacuously; the receipt
+(P3.5) is where the removal is verified."
+
+---
+
+## 31. §7 — a grant's granularity is not stated
+
+**Silent.** `grant(owner, reader)` takes two scopes and no record, so on the face of it a
+grant is scope-wide. §7 never says so, and I4.2 speaks of "cross-scope visibility" without
+saying visibility of what. An adapter author could reasonably implement per-record grants and
+believe they conform.
+
+**Choice.** Recorded as **open question 9** rather than decided. The reference implements the
+scope-wide reading, which is what the signature already forces.
+
+**Why.** This one does not have a strict reading that settles it: scope-wide grants more and
+so leaks more, but per-record grants make `revoke` a narrower instrument and leave the
+question of what happens to records written *after* the grant — and a wrong answer there is a
+leak too. It is a design question with a real deployment argument on the per-record side, and
+the document's honest position is that it has not been decided. Nothing in the current checks
+depends on which way it goes; P4.2 grants, reads, revokes, and reads again, and passes under
+either reading.
+
+**Proposed text.** Applied as open question 9: "Is a grant the right granularity? §7 makes a
+grant scope-wide — B may read every record A owns, present and future — where a per-record
+grant would let A share one piece of evidence without exposing the rest of its scope.
+Scope-wide is simpler to reason about and to revoke; per-record is what a real deployment is
+likely to want."
+
+---
+
+## 32. §2 / §5 — `residue`'s floor is state and appears in neither the model nor the arithmetic
+
+**Silent, and structurally so.** §6.1 introduces a floor: a number a surviving descendant now
+carries, which bounds its effective confidence and survives a reopen. §2's model table
+enumerates what a record consists of and has no floor row. §5 gives the `effective` rule as a
+minimum over the declared value and the ancestor set, with no third term. The mode is
+therefore defined entirely in the prose of one bullet, and an implementer reading §2 and §5 —
+the normative model and the normative arithmetic — would not know a floor exists.
+
+**Choice.** A `floor` row added to §2's table, typed as a float in [0.0, 1.0] or none, marked
+as state rather than content, and cross-referenced to §6.1 and to open question 8 for its
+visibility. §5's rule extended to three terms where a floor is present. Spec-only, as
+instructed: nothing in `systems/reference/` implements `residue`, and `ForgetMode` still has
+three members (entry 23).
+
+**Why.** §2 and §5 are where a reader learns what a record is and how the number is computed,
+and a bound that can lower a record's effective confidence belongs in both or the document is
+describing two different data models in two places. Writing the third term out also settles
+something the prose left ambiguous: whether a floor is an ancestor for the purposes of
+`min(∅)`. It is not — it is a separate term — so a record with a floor and no surviving
+ancestors is bounded by `min(declared, floor)`, and the empty-chain convention (open question
+1) is untouched either way. That is stated explicitly, because a reader who assumed a floor
+was a synthetic ancestor would get the same answer under `min(∅) = 1.0` and a different one
+under `min(∅) = 0.0`.
+
+**Proposed text.** Applied. §2's table gains the `floor` row; §5 gains the three-term rule
+immediately after the two-term one, and the paragraph that follows it.
+
+---
+
+## 33. §5 — does a `residue` system need P2.5 rewritten?
+
+**Unclear, and worth stating because the answer is no.** Entry 23 argues that P2.5 already
+measures a `residue` declaration rather than excusing it, and that argument is in a design
+note, not in the specification. A reader of §5 who has just read §6.1 has no way to tell
+whether the checks were written before the mode existed and need revisiting for it.
+
+**Choice.** One sentence added to §5, immediately after the P2.5 note.
+
+**Why.** The claim is small and load-bearing: `residue`'s entire promise is that I2.5 holds,
+and P2.5 is the signed comparison that tests I2.5 with no branch on mode. So a correct
+`residue` implementation passes it — the floor supplies exactly the bound the removed ancestor
+was providing — and a `residue` declaration over `erase` behaviour fails it. Saying this in
+the specification is what keeps the mode from looking like it needs a check of its own, and it
+is the same property that makes the erase divergence a result rather than a special case: the
+check is written against the arithmetic, so a new mode is measured by it for free. The
+remaining gap is unchanged and still recorded in entry 23 — floor composition and
+floor-survives-reopen are inferable from arithmetic but have no direct reader.
+
+**Proposed text.** Applied to §5: "A system declaring `residue` passes P2.5 without any check
+being edited: the floor supplies the bound the removed ancestor was providing, so
+`effective_after ≤ effective_before` holds."

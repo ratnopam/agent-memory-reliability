@@ -91,6 +91,21 @@ def readable_graph(
     return declared, sources
 
 
+GRANT_OPERATIONS = ("grant", "revoke", "grants")
+
+
+def sharing_system(system: MemorySystem, capabilities) -> MemorySystem:
+    """SPEC.md 3 names the grant operations; a system missing one fails the check here."""
+    missing = [
+        name for name in GRANT_OPERATIONS if not callable(getattr(system, name, None))
+    ]
+    assert not missing, (
+        f"the system declares scopes={capabilities.scopes!r}, so I4.2 requires a "
+        f"recorded, revocable grant; missing {', '.join(missing)}"
+    )
+    return system
+
+
 def survives(system: MemorySystem, memory_id: MemoryId, scope: Scope = "default") -> bool:
     """True when the record is still readable.
 

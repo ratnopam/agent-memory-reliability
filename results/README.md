@@ -8,8 +8,8 @@
 `make contamination` writes two more into the same directory, and appends its table to
 `summary.md`:
 
-- `contamination.json` — the simulation's parameters, seed, and both arms' metrics.
-- `contamination.svg` — the two-bar chart, hand-written, no plotting library.
+- `contamination.json` — the simulation's parameters, seed, and all three arms' metrics.
+- `contamination.svg` — two panels, three bars each, hand-written, no plotting library.
 
 The date is UTC, matching `generated_at`. A directory is one day's results, overwritten if
 `amr reproduce` runs twice in a day; the commit SHA inside tells you which tree produced it.
@@ -82,6 +82,9 @@ parameters        Roles, rounds, tau, the confidence distribution and its weight
                   citation sizes, the hallucinated-citation rate, and both injected beliefs.
 arms
   ungated         The agent sees declared confidence only and may cite anything it reads.
+  surfaced        The agent sees effective confidence and nothing is withheld: a
+                  candidate's chance of being cited is proportional to that number.
+                  Visibility without enforcement.
   gated           A source whose *effective* confidence is below tau may be read, not cited.
     denominator   Derived writes measured. The two injected roots are not counted.
     inherited_count, inherited_fraction
@@ -91,8 +94,25 @@ arms
                   below tau. The declared-versus-effective gap.
     max_chain_depth
                   Longest path beneath the 0.40 belief. The belief itself is depth 0.
-    totals        rounds, writes, reads, strict_write_rejections, abstentions.
+    totals        rounds, writes, reads, strict_write_rejections, abstentions. `reads` is
+                  a control and is identical in all three arms: the read sample is drawn
+                  before any policy runs.
 ```
+
+### Reading the gated arm
+
+gated is zero by construction at tau=0.5: the injected belief and every descendant are
+bounded at 0.40 and cannot be cited. The gated bar demonstrates the boundary; the surfaced
+bar measures what visibility alone achieves.
+
+That is worth saying plainly because a zero is the most flattering number a gate can
+produce and the least informative. The gate is not detecting contamination and choosing to
+stop it; the arithmetic already puts the belief and its whole subtree below the threshold,
+so there is nothing for the policy to get wrong. What the arm shows is that the bound
+composes — one 0.40 root caps every descendant, at any depth, through the ordinary
+weakest-link walk — and that is a property of the specification, not a result about
+policies. The surfaced arm is the one with a finding in it: the agents see the number, no
+one stops them, and inheritance falls from 48% to 5% and depth from 9 to 3.
 
 ## Outcomes
 
