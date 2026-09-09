@@ -89,7 +89,7 @@
 <rect x="760" y="522" width="800" height="112" rx="7" fill="#ECEBF4" stroke="#3C3A54" stroke-width="2.5"/>
 <text x="774" y="547.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#3C3A54">amr/runner.py — one pytest session over every (system, forget_mode)</text>
 <text x="774" y="567.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#5A5852">Outcome per check: PASS · FAIL · DIVERGENCE. A skipped or unrun check is FAIL.</text>
-<text x="774" y="584.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#5A5852">Missing check ids fail the run as a harness defect, never silently.</text>
+<text x="774" y="584.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#5A5852">Missing check ids fail the run as a suite defect, never silently.</text>
 <text x="774" y="601.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#5A5852">DIVERGENCE only when SPEC.md leaves the behaviour open (§6.4) and the system's</text>
 <text x="774" y="618.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#5A5852">Capabilities declare that behaviour. Reported, not scored: it never turns the build red.</text>
 <polyline points="1160,634 1160,654" fill="none" stroke="#5A5852" stroke-width="1.75" marker-end="url(#ar)"/>
