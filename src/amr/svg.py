@@ -28,6 +28,9 @@ OUTCOME_FILL = {
 }
 
 UNGATED_FILL = "#a11d2b"
+#: The middle arm of the contamination chart: visibility without enforcement. Amber, the
+#: same reading as DIVERGENCE in the matrix — measured, and neither clean nor a failure.
+SURFACED_FILL = "#b3541e"
 GATED_FILL = "#1f7a4d"
 
 FONT = "'DejaVu Sans','Helvetica Neue',Helvetica,Arial,sans-serif"
