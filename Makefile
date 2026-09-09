@@ -95,8 +95,14 @@ lint: deps
 # because a failure there is the cheapest to read, and the greps run last because they are
 # the ones nobody remembers. One line per gate; the first red gate stops the run and prints
 # the tail of its output. Green here is the precondition for docs/RELEASE.md.
+#
+# The two gates that produce results write outside the working tree. Running the gates must
+# not modify the repository: a checklist step that leaves the tree dirty gets `git checkout`ed
+# away by hand, and the next thing to be discarded by hand is something that mattered. The
+# committed results are regenerated deliberately, by `make reproduce`, and the drift gate
+# below reads what is committed rather than what a gate just produced.
 release-check: deps
-	@log=$$(mktemp); trap 'rm -f $$log' EXIT; \
+	@log=$$(mktemp); out=$$(mktemp -d); trap 'rm -rf $$log $$out' EXIT; \
 	gate() { \
 		printf '%-34s' "$$1"; \
 		if eval "$$2" >$$log 2>&1; then \
@@ -106,9 +112,9 @@ release-check: deps
 		fi; \
 	}; \
 	gate "conformance suite" "$(PY) -m amr test -q"; \
-	gate "results regenerated" "$(PY) -m amr reproduce --quiet"; \
+	gate "results regenerated" "$(PY) -m amr reproduce --quiet --out $$out"; \
 	gate "determinism" "$(PY) -m amr determinism"; \
-	gate "contamination simulation" "$(PY) -m amr contamination --seed $(SEED) --quiet"; \
+	gate "contamination simulation" "$(PY) -m amr contamination --seed $(SEED) --quiet --out $$out"; \
 	gate "lint" "$(MAKE) --no-print-directory lint"; \
 	gate "reference is stdlib only" "$(PY) .github/check_stdlib_only.py"; \
 	gate "no LLM in the measured path" "! grep -rniE '$(LLM_IMPORT)' --include='*.py' $(SOURCES)"; \
