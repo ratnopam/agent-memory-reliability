@@ -333,7 +333,8 @@ interleaved with the API changes v0.4's new checks require — the per-cell comp
 substantive form of the same claim, and it is the stronger one, since it compares outcomes
 rather than bytes that were always going to move.
 
-Greps: `git grep -i memledger` returns nothing in tracked files. `git grep -w harness`
+Greps: the former-name grep (the pre-rename project name, spelled out in neither this report nor
+the gate that runs it — see the `Makefile`) returns nothing in tracked files. `git grep -w harness`
 returns three files, all prose — `design-notes/build-plan.md` and
 `design-notes/build-report.md`, each carrying a "Historical" note at the top saying `harness/`
 became `src/amr/`, and the frozen `version1/poster/poster.svg`.
