@@ -1,0 +1,17 @@
+# `make lint` is a safety net, not a style council. Selected: undefined and unused names,
+# import placement and ordering, the bug-shaped patterns in flake8-bugbear, implicit string
+# concatenation (which reads as a missing comma), and ruff's own checks. Left out:
+# formatting opinions and rewrite suggestions, so that a lint failure always means
+# something. Pinned here so a contributor's ruff agrees with CI.
+
+target-version = "py311"
+line-length = 90
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "ISC", "RUF"]
+# An em dash in prose and a set-union sign in a docstring about set union are deliberate.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[lint.per-file-ignores]
+# The property tests read as prose on purpose; a long assertion message is not a defect.
+"properties/*" = ["E501"]

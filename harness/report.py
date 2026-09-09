@@ -203,14 +203,15 @@ def failure_lines(document: dict) -> list[str]:
 
 def capability_lines(run: dict) -> list[str]:
     capabilities = run["capabilities"]
-    return [
+    declared = (
         f"Declared: forget modes {', '.join(capabilities['supported_forget_modes'])}; "
         f"default `{capabilities['default_forget_mode']}`; "
         f"empty chain {capabilities['empty_chain_convention']}; "
         f"revision `{capabilities['revision']}`; scopes `{capabilities['scopes']}`; "
         f"cross-scope `{capabilities['cross_scope_derivation']}`; "
         f"durability `{capabilities['durability']}`."
-    ]
+    )
+    return [declared]
 
 
 def _unnumbered_counts(document: dict) -> tuple[int, int]:
@@ -230,19 +231,18 @@ def render(document: dict, spec: SpecText) -> str:
         if run["system"] not in systems:
             systems.append(run["system"])
 
-    lines: list[str] = [
-        "# Conformance results",
-        "",
+    provenance = (
         f"Generated {document['generated_at']} · schema {document['schema']} · "
         f"commit `{environment['git_sha']}` · "
         f"Python {environment['python_version']} on {environment['platform']} · "
-        f"pytest {environment['pytest_version']}.",
-        "",
+        f"pytest {environment['pytest_version']}."
+    )
+    tally = (
         f"{totals['tests']} tests: {totals[CheckOutcome.PASS.value]} PASS, "
         f"{totals[CheckOutcome.FAIL.value]} FAIL, "
-        f"{totals[CheckOutcome.DIVERGENCE.value]} DIVERGENCE.",
-        "",
-    ]
+        f"{totals[CheckOutcome.DIVERGENCE.value]} DIVERGENCE."
+    )
+    lines: list[str] = ["# Conformance results", "", provenance, "", tally, ""]
 
     for system in systems:
         runs = [run for run in document["runs"] if run["system"] == system]

@@ -33,7 +33,9 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from mcp.server.mcpserver import MCPServer  # noqa: E402
-from mcp.server.mcpserver.exceptions import ToolError as AnticipatedToolError  # noqa: E402
+from mcp.server.mcpserver.exceptions import (  # noqa: E402
+    ToolError as AnticipatedToolError,
+)
 
 from harness.protocol import (  # noqa: E402
     Chain,
@@ -90,9 +92,11 @@ def _forget_mode(name: str | None) -> ForgetMode | None:
         return None
     try:
         return ForgetMode(name)
-    except ValueError:
+    except ValueError as error:
         supported = ", ".join(mode.value for mode in ForgetMode)
-        raise ToolError(f"invalid_argument: unknown forget mode {name!r}; one of {supported}")
+        raise ToolError(
+            f"invalid_argument: unknown forget mode {name!r}; one of {supported}"
+        ) from error
 
 
 def _default_mode() -> ForgetMode:
