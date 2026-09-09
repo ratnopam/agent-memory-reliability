@@ -5,7 +5,7 @@ round, so nothing in this repository can only be done by GNU make:
 
 * ``test``          run the property suite, pytest's own output, nothing added
 * ``reproduce``     run it and write ``results/<today>/{raw.json,summary.md}``
-* ``determinism``   run ``reproduce`` twice and compare the bytes
+* ``determinism``   run ``reproduce`` and ``contamination`` twice, compare the bytes
 * ``demo``          the reference through the suite, four blocks, no pytest output
 * ``matrix``        render an existing ``raw.json`` as an SVG table
 * ``contamination`` the three-role simulation, gated versus ungated
@@ -105,8 +105,29 @@ def _display(path: Path, root: Path) -> str:
         return str(path)
 
 
+USAGE = """the conformance suite for agent memory reliability.
+
+  amr test            run the property suite; pytest's arguments pass through
+  amr reproduce       run it and write results/<today>/{raw.json,summary.md}
+  amr determinism     run reproduce and contamination twice, compare the bytes
+  amr demo            the reference, its matrix, its one divergence: fifteen lines
+  amr matrix          render an existing raw.json as an SVG table
+  amr contamination   the three-role simulation, gated versus ungated
+
+reproduce exits non-zero if any check FAILed. A DIVERGENCE does not: it is a reported
+disagreement with an open question in the specification, and a build that went red on it
+would pressure whoever ran it to bury the finding.
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="amr", description=__doc__)
+    # The module docstring is prose and argparse would reflow it into one paragraph. The
+    # command line is the interface, so its help is written for a terminal, not derived.
+    parser = argparse.ArgumentParser(
+        prog="amr",
+        description=USAGE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     commands = parser.add_subparsers(dest="command", required=True)
 
     commands.add_parser("test", help="run the property suite (pytest arguments pass through)")
@@ -123,7 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     commands.add_parser(
-        "determinism", help="run reproduce twice and compare the results byte for byte"
+        "determinism",
+        help="run reproduce and contamination twice and compare the bytes",
     )
     commands.add_parser("demo", help="the reference, its matrix, and its one divergence")
 
@@ -135,9 +157,18 @@ def build_parser() -> argparse.ArgumentParser:
     contamination = commands.add_parser(
         "contamination", help="the three-role contamination simulation"
     )
-    contamination.add_argument("--seed", type=int, default=7)
-    contamination.add_argument("--out", type=Path, default=None)
-    contamination.add_argument("--quiet", action="store_true")
+    contamination.add_argument(
+        "--seed", type=int, default=7, help="the PRNG seed; the whole of the input"
+    )
+    contamination.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="directory for contamination.json and the chart (default results/<today>/)",
+    )
+    contamination.add_argument(
+        "--quiet", action="store_true", help="do not print the table to stdout"
+    )
     return parser
 
 

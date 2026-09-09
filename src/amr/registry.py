@@ -60,6 +60,12 @@ def register(name: str, factory: SystemFactory, source: str = "in-tree") -> None
             raise ValueError(
                 f"system {name!r} is already registered from {_SOURCES[name]}"
             )
+        # Loading an entry point imports the module, and an in-tree adapter registers
+        # itself at import time — so the same factory arrives twice, in-tree first.
+        # Record the more deliberate source, or the label would say "in-tree" for a
+        # system the suite found by the entry point that imported it.
+        if source == "entry-point":
+            _SOURCES[name] = source
         return
     _REGISTRY[name] = factory
     _SOURCES[name] = source
