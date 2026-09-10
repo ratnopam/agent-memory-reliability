@@ -230,3 +230,4 @@ design-notes/HANDOFF-*.md
 # `raw.json` stamps its git SHA, so anything local has to be ignored or the committed
 # results claim to come from a tree nobody can reproduce.
 .claude/
+docs/frames/
