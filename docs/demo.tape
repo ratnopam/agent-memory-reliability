@@ -11,6 +11,7 @@
 # fifteen lines on purpose — they all have to fit.
 
 Output docs/demo.gif
+# Output docs/frames/
 
 Set Shell zsh
 Set FontSize 24
