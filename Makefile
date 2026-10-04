@@ -24,7 +24,7 @@ SEED ?= 7
 # The supplementary tests for the extra systems, as a wildcard: an adapter whose file is
 # not in this checkout is not a target that fails, it is a target with less to run.
 EXTRA_TESTS := $(wildcard properties/test_persistent_system.py \
-	properties/test_langgraph_adapters.py)
+	systems/langgraph_store/test_adapters.py)
 
 # The same pattern CI greps for. A model client imported anywhere the suite can reach is
 # a measurement path with a model in it, whether or not the import is used.

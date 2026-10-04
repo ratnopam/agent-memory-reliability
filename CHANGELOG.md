@@ -39,6 +39,15 @@ changelog at the top of [version2/SPEC.md](version2/SPEC.md), and
   declared system into a git-ignored scratch directory, explains the matrix without inventing a
   score, and reads the specification row behind every FAIL. Its frontmatter, every command it names,
   every path it links and the sentences it must not contain are all asserted by the suite.
+- Two adapters over one third-party long-term store ([systems/langgraph_store/](systems/langgraph_store/)),
+  both extras behind `pip install -e ".[langgraph]"`. `langgraph-store` is the store's own five
+  operations with nothing computed over them and fails twenty-five of the twenty-six checks, each
+  refusal a named exception rather than an invented value; `langgraph-layered` is the same store under
+  the write-through wrapper and passes every check in every declared mode, with the reference's single
+  `erase` divergence and nothing else. One namespace per scope, record ids as keys, plain JSON values,
+  nothing indexed, and no model client imported anywhere. The failing set is asserted check by check
+  with the operation each one wanted, and the comparison is rendered into the README from
+  `results/extras/<date>/raw.json` and checked by `amr drift`.
 
 ### Changed
 

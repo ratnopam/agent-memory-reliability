@@ -160,6 +160,15 @@ The wrapper declares `durability` from the backend, so a backend that puts state
 says `durable` and one that puts it in a dictionary says `round-trip`. Nothing else in the
 declaration changes, because nothing else about the system changed.
 
+[systems/langgraph_store/](../systems/langgraph_store/) is both routes over one real
+third-party store, side by side: `store_alone.py` is the store mapped straight onto the
+protocol, where every computed operation raises and the twenty-five resulting FAILs are the
+measurement of what you would have to write; `layered.py` is the same store as four methods
+behind `WriteThrough`, which passes everything. If you want to know what your store is
+missing before you decide how much to build, measure it the first way first. The FAILs are
+not an insult to the store — they are the specification's questions, asked of something that
+was built to answer different ones.
+
 ## 4. Running the suite against only your system
 
 ```bash

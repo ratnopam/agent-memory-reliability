@@ -119,9 +119,14 @@ def cmd_drift(raw: Path | None) -> int:
     the tree as it stands: the question here is whether the table a reader sees in the
     README is the table in ``results/<date>/``, not whether today's run agrees with itself.
 
-    Three things the README asserts and nothing generates: the conformance matrix, the
-    contamination figures, and the chart. All three are reported together rather than one
-    per run, because a reader fixing one wants to know about the other two.
+    Four things the README asserts and nothing generates: the conformance matrix, the
+    contamination figures, the chart, and the two-system comparison from an extras run.
+    All four are reported together rather than one per run, because a reader fixing one
+    wants to know about the others.
+
+    The comparison is the one that may have nothing to compare: an extras run needs an
+    optional dependency, so ``latest_extras`` answers ``None`` in a checkout without one
+    and the check passes unless the README renders a table anyway.
     """
     root = repo_root()
     readme = root / "README.md"
@@ -130,18 +135,27 @@ def cmd_drift(raw: Path | None) -> int:
     spec = report.read_spec(spec_path(root))
     contamination_path = results.latest_contamination(root)
     contamination = results.load_contamination(contamination_path)
+    extras_path = results.latest_extras(root)
     drifts = [
         report.readme_matrix_drift(document, spec, readme),
         report.readme_contamination_drift(contamination, readme),
         report.embedded_chart_drift(root, contamination_path.with_name("contamination.svg")),
+        report.readme_pair_drift(
+            None if extras_path is None else results.load(extras_path), spec, readme
+        ),
     ]
     found = [drift for drift in drifts if drift]
     if found:
         print("\n".join(found), file=sys.stderr)
         return 1
+    compared = (
+        "no extras run to compare"
+        if extras_path is None
+        else f"the comparison in {_display(extras_path, root)}"
+    )
     print(
         f"README.md renders the matrix in {_display(path, root)}, the figures in "
-        f"{_display(contamination_path, root)}, and that run's chart"
+        f"{_display(contamination_path, root)}, that run's chart, and {compared}"
     )
     return 0
 

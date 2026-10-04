@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from amr.results import extras_dir, latest_contamination, latest_raw
+from amr.results import extras_dir, latest_contamination, latest_extras, latest_raw
 
 DAYS = ("2026-01-01", "2026-02-02")
 
@@ -78,3 +78,27 @@ def test_extras_runs_are_dated_inside_their_own_directory(tmp_path: Path) -> Non
     assert directory == tmp_path / "results" / "extras" / DAYS[0]
     assert extras_dir(tmp_path).parent == tmp_path / "results" / "extras"
     assert extras_dir(tmp_path).name.count("-") == 2, "the default is today's date"
+
+
+def test_the_newest_extras_run_is_found_and_an_absent_one_is_not_an_error(
+    tmp_path: Path,
+) -> None:
+    """``None`` and not an exception, and the same date filter one level down.
+
+    An extras run needs an optional dependency, so a checkout can legitimately have none
+    and still be a working checkout — unlike a tree with no published matrix, which
+    ``latest_raw`` refuses. The filter is still a filter: a scratch directory beside the
+    dated ones must not become the thing ``amr drift`` compares the README with.
+    """
+    assert latest_extras(tmp_path) is None, "nothing published is not a crash"
+
+    newest = _write(extras_dir(tmp_path, DAYS[-1]), "raw.json", {"wanted": True})
+    _write(extras_dir(tmp_path, DAYS[0]), "raw.json", {"wanted": False})
+    for decoy in ("latest", "tmp-run", f"{DAYS[-1]}-retry"):
+        _write(tmp_path / "results" / "extras" / decoy, "raw.json", {"wanted": False})
+    assert latest_extras(tmp_path) == newest
+
+    # And it is not confused by the published matrix: the two live in two trees, which is
+    # the whole reason extras_dir exists.
+    _write(tmp_path / "results" / "2026-12-31", "raw.json", {"wanted": False})
+    assert latest_extras(tmp_path) == newest

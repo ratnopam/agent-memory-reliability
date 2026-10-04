@@ -151,10 +151,26 @@ def test_every_link_resolves(text: str) -> None:
     assert missing == [], missing
 
 
-@pytest.mark.parametrize("forbidden", FORBIDDEN)
-def test_it_does_not_say_what_it_must_not_say(text: str, forbidden: str) -> None:
+@pytest.mark.parametrize(
+    "forbidden",
+    # The first case carries its own id. A parametrised id is the runtime value, and it
+    # travels into every results document the suite writes — where the gate that greps the
+    # tree for the former name finds it and cannot tell a test parameter from a relapse.
+    # This file is already careful to assemble the string rather than spell it; the id has
+    # to be too.
+    [pytest.param(FORMER_NAME, id="the-former-name"), *FORBIDDEN[1:]],
+)
+def test_it_does_not_say_what_it_must_not_say(
+    text: str, forbidden: str, request: pytest.FixtureRequest
+) -> None:
     """A score the suite does not compute is the easiest thing for a skill to invent."""
     assert forbidden not in text.lower(), forbidden
+    # And this case's own name is publishable. The suite records one entry per test into
+    # `raw.json`, a results document is committed, and the gate greps what is committed —
+    # so a test id is as much a tracked string as a sentence of prose is.
+    assert FORMER_NAME not in request.node.name, (
+        "this test's id would carry the former name into every results document"
+    )
 
 
 def test_it_sends_every_run_to_the_scratch_directory(text: str) -> None:

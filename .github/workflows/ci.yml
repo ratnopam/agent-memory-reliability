@@ -138,3 +138,73 @@ jobs:
       # failures, and the gate asserts they are exactly the five its declaration predicts.
       - name: The example fails exactly what it declares
         run: python .github/check_example_adapter.py
+
+  # The one job that installs a third-party store. It is separate from `conformance` for
+  # the reason the extra exists: the published matrix is the reference and nothing else,
+  # and a dependency that can only be fetched from an index must not be on the path of
+  # the run that produces it. Everything here is opt-in and nothing here can move that
+  # table — which is itself asserted below, by running the default suite with the extra
+  # installed and checking that it still measures one system.
+  extras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the suite and the optional store
+        run: python -m pip install --quiet -e ".[test,langgraph]"
+
+      - name: The inventory lists the extras as extras
+        run: python -m amr systems
+
+      # The merge criterion, run the way the brief phrases it: a clone with the extra
+      # installed and nothing else done to it passes these.
+      - name: Both adapters, and the write-through system
+        run: make extras-test
+
+      # An installed extra is still not in the default run. If this step ever measured
+      # four systems, every number in the README would be about a different document.
+      - name: An installed extra does not enter the default matrix
+        run: |
+          make test
+          python - <<'PY'
+          import json, pathlib, subprocess, sys, tempfile
+          with tempfile.TemporaryDirectory() as scratch:
+              out = pathlib.Path(scratch) / "run"
+              subprocess.run(
+                  [sys.executable, "-m", "amr", "reproduce", "--out", str(out), "--quiet"],
+                  check=True,
+              )
+              document = json.loads((out / "raw.json").read_text())
+          systems = sorted({run["system"] for run in document["runs"]})
+          assert systems == ["reference"], systems
+          print("the default run measures", systems)
+          PY
+
+      # Non-zero on purpose, like the example job above: the store alone fails almost
+      # every check, and that failing column is the measurement. What matters is that the
+      # run was written, so the next step has a fresh document to compare the README with.
+      - name: Measure the store alone and the store with the layer
+        run: |
+          make extras || true
+          test -f "results/extras/$(date -u +%F)/raw.json"
+
+      # `conformance` runs this against the committed comparison. Here it runs against one
+      # measured minutes ago, with a real install of a real store from a real index, which
+      # is the only place the README's table is checked against something nobody in this
+      # repository produced.
+      - name: README renders a freshly measured comparison
+        run: make drift
+
+      - name: Upload the extras run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-extras
+          path: |
+            results/extras/**/raw.json
+            results/extras/**/summary.md
+          if-no-files-found: error

@@ -31,6 +31,12 @@ dependencies = []
 [project.optional-dependencies]
 test = ["pytest>=8.0,<10"]
 mcp = ["mcp>=2.0,<3"]
+# The long-term store the adapters in systems/langgraph_store/ are measured against. An
+# extra and not a dependency: nothing in src/amr or systems/reference imports it, the
+# default matrix never builds those systems, and a checkout without this installed skips
+# their tests rather than failing them. The store lives in langgraph-checkpoint, which is
+# the distribution that carries langgraph.store.
+langgraph = ["langgraph-checkpoint>=2.0"]
 
 [project.urls]
 Homepage = "https://github.com/ratnopam/agent-memory-reliability"
@@ -52,6 +58,7 @@ packages = [
   "systems",
   "systems.reference",
   "systems.persistent",
+  "systems.langgraph_store",
   "scenarios",
   "scenarios.contamination",
 ]

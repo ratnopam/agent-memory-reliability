@@ -144,6 +144,100 @@ def system_table(document: dict, spec: SpecText, system: str) -> list[str]:
     return _table(["Check", "Scenario", *modes], rows)
 
 
+#: The header row of a two-system comparison, and of nothing else in the README. The
+#: columns are two adapters rather than three forget modes, which is why this cannot be
+#: ``poster_matrix`` with different arguments: the comparison runs across systems, at one
+#: mode both of them declare.
+PAIR_HEADER = "| Check | Scenario |"
+
+
+def pair_table(
+    document: dict, spec: SpecText, bare: str, layered: str, mode: str | None = None
+) -> list[str]:
+    """Every numbered check twice: what a store answers alone, and with a layer over it.
+
+    The pair is the measurement, and a pair is only readable at one forget mode. A store
+    that computes nothing declares one mode because a column cannot be measured without
+    one; a layer declares three. Comparing a one-mode column with a three-mode column
+    would put the difference between the adapters and the difference between the modes in
+    the same table, so the mode here is one they both declare — the first, in
+    specification order, unless a caller names another.
+    """
+    columns = []
+    for system in (bare, layered):
+        runs = [run for run in document["runs"] if run["system"] == system]
+        if not runs:
+            raise ValueError(f"{system!r} has no runs in this results document")
+        columns.append(runs)
+    shared = [mode_ for mode_ in modes_in(columns[0]) if mode_ in modes_in(columns[1])]
+    if not shared:
+        raise ValueError(f"{bare!r} and {layered!r} declare no forget mode in common")
+    chosen = mode or shared[0]
+    if chosen not in shared:
+        raise ValueError(f"{chosen!r} is not declared by both {bare!r} and {layered!r}")
+
+    outcomes = [
+        next(outcomes_by_check(run) for run in runs if run["forget_mode"] == chosen)
+        for runs in columns
+    ]
+    rows = [
+        [
+            check,
+            spec.scenario(check),
+            *[column.get(check, MISSING_CELL) for column in outcomes],
+        ]
+        for check in check_ids_in(document, columns[0] + columns[1])
+    ]
+    return _table(["Check", "Scenario", bare, layered], rows)
+
+
+def readme_pair_drift(
+    document: dict | None, spec: SpecText, readme_path: Path
+) -> str | None:
+    """The README's two-system table against the extras run. None means they agree.
+
+    Which two systems is read off the table's own header rather than passed in, so that
+    nothing in ``amr`` has to know the name of an optional adapter: the committed table
+    declares what it is about and the results document supplies the outcomes. A tree with
+    neither the table nor an extras run has nothing to check and says so by passing.
+    """
+    if not readme_path.exists():
+        return f"{readme_path.name} does not exist"
+    lines = readme_path.read_text(encoding="utf-8").splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith(PAIR_HEADER)]
+    if not starts:
+        return (
+            None
+            if document is None
+            else f"{readme_path.name} does not render the comparison in the extras run"
+        )
+    if document is None:
+        return (
+            f"{readme_path.name} renders a two-system comparison and there is no "
+            "results/extras/<date>/raw.json to check it against. Run `make extras`."
+        )
+    start = starts[0]
+    end = start
+    while end < len(lines) and lines[end].startswith("|"):
+        end += 1
+    found = [line.rstrip() for line in lines[start:end]]
+    header = [cell.strip() for cell in found[0].strip("|").split("|")]
+    if len(header) != 4:
+        return f"{readme_path.name}: the comparison table needs four columns, got {header}"
+    try:
+        expected = pair_table(document, spec, header[2], header[3])
+    except ValueError as error:
+        return f"{readme_path.name}: {error}"
+    if found != expected:
+        diff = "\n".join(
+            difflib.unified_diff(
+                found, expected, fromfile="README.md", tofile="generated", lineterm=""
+            )
+        )
+        return f"{readme_path.name} does not render the generated comparison\n{diff}"
+    return None
+
+
 @dataclass(frozen=True)
 class MatrixRow:
     """One line of the poster matrix, before anyone decides what it looks like."""

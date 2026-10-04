@@ -192,6 +192,58 @@ without a test being edited, and `SYSTEMS=<name> make test` runs one.
 [examples/external-adapter/](examples/external-adapter/) is a working adapter that fails three
 checks on purpose, because its declaration says it will.
 
+## Store alone, and with the layer
+
+One long-term store, measured twice. `langgraph-store` is the store's own five operations — put,
+get, search, delete, list namespaces — with nothing computed over them. `langgraph-layered` is the
+same store underneath [systems/persistent/](systems/persistent/), which answers the specification's
+questions with the reference's semantics and the store's storage. Both are extras:
+`pip install -e ".[langgraph]"`, then `make extras`.
+
+A **FAIL** in the first column means *this store does not provide this operation*, not *this store
+is broken*. A document store was not built to walk a provenance graph or bound a confidence, and
+every refusal here is a named exception saying so rather than an invented value — a store that
+answered an empty walk and a default confidence of 1.0 would have scored better while being the
+failure this suite exists to catch. The gap is the measurement: twenty-five of twenty-six checks,
+and the one that passes does so because a scope is a namespace, so isolation is the store's own
+addressing. Both columns are at `tombstone`, the one forget mode both declare.
+
+| Check | Scenario | langgraph-store | langgraph-layered |
+|---|---|---|---|
+| P1.1 | Write citing an id that has not been assigned | FAIL | PASS |
+| P1.2 | Three-hop chain, walk from leaf | FAIL | PASS |
+| P1.3 | Diamond graph, walk from sink | FAIL | PASS |
+| P1.4 | Walk after an ancestor is forgotten | FAIL | PASS |
+| P1.5 | Walk after store reopen | FAIL | PASS |
+| P1.6 | Write citing an unresolvable source id | FAIL | PASS |
+| P1.7 | Deserialise a store containing a cycle | FAIL | PASS |
+| P2.1 | Chain 0.4 → 0.9, read leaf | FAIL | PASS |
+| P2.2 | Revise root 0.9 → 0.2, read leaf | FAIL | PASS |
+| P2.3 | Diamond with one weak ancestor | FAIL | PASS |
+| P2.4 | Root with no sources, declared 0.7 | FAIL | PASS |
+| P2.5 | Forget weakest ancestor, re-read leaf | FAIL | PASS |
+| P2.6 | Read revision history after a revise | FAIL | PASS |
+| P2.7 | Raise an ancestor above a descendant's declared value | FAIL | PASS |
+| P2.8 | Read `effective_confidence` of a record from its owner scope and from a granted reader scope | FAIL | PASS |
+| P3.1 | Read a forgotten record | FAIL | PASS |
+| P3.2 | Forget twice | FAIL | PASS |
+| P3.3 | Forget a mid-chain record | FAIL | PASS |
+| P3.4 | Re-write identical content | FAIL | PASS |
+| P3.5 | Inspect receipt | FAIL | PASS |
+| P4.1 | Write in A, list in B | PASS | PASS |
+| P4.2 | Grant, read, revoke, read | FAIL | PASS |
+| P4.3 | Cross-scope derivation, walk from B | FAIL | PASS |
+| P4.4 | Forget in A with descendants in B | FAIL | PASS |
+| P4.5 | Replay a fixed set of interleaved write schedules, each a valid topological order of one plan | FAIL | PASS |
+| P4.6 | Reader with a grant attempts `revise` and `forget` on the owner's record | FAIL | PASS |
+
+Generated from `results/extras/<date>/raw.json` and checked by `amr drift`, so the table cannot
+drift from the run. `langgraph-layered` also passes under `cascade` and `erase`, with the same single
+`P2.5` divergence the reference has and nothing else — the layer closes the whole gap, and nothing
+in either adapter imports a model client or configures a semantic index.
+[systems/langgraph_store/](systems/langgraph_store/) is the code: 130 lines of field mapping and
+refusals for the first column, and 80 of address translation and paging for the second.
+
 ## Add a failure mode
 
 Write `taxonomy/repro/<slug>.py` with a `reproduce(system) -> dict` over `amr.protocol` only,

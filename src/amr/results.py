@@ -184,6 +184,22 @@ def latest_raw(root: Path) -> Path:
     return candidates[-1]
 
 
+def latest_extras(root: Path) -> Path | None:
+    """The newest ``results/extras/<date>/raw.json``, or ``None`` if there is none.
+
+    ``None`` rather than an exception, because an extras run is optional in a way the
+    published matrix is not: a checkout where nobody installed an optional dependency has
+    nothing to compare and is not thereby broken. ``latest_raw`` raises for the opposite
+    reason — a tree with no published matrix cannot answer the question the README asks.
+    """
+    candidates = sorted(
+        path
+        for path in (root / "results" / "extras").glob("*/raw.json")
+        if DATED.fullmatch(path.parent.name)
+    )
+    return candidates[-1] if candidates else None
+
+
 def latest_contamination(root: Path) -> Path:
     """The newest committed ``results/<date>/contamination.json``.
 
