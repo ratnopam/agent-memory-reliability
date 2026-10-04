@@ -1,11 +1,16 @@
 """An MCP server over a single ``ReferenceSystem``.
 
-The server translates. It does not decide anything: no default confidence, no retry on a
+The server translates, and the translation is ``amr.toolcalls`` — this file is the MCP
+half and nothing else. It does not decide anything: no default confidence, no retry on a
 rejected write, no collapsing FORGOTTEN into NOT_FOUND, no reordering of sources so a
 write will succeed. Every tool is a JSON shape in, a call into the system, a JSON shape
 out, and a raised protocol error turned into a tool error with a stable code prefix. If a
 behaviour is arguable, it belongs in ``systems/reference/`` where the conformance suite
 can see it, not here where nothing checks it.
+
+The tool signatures stay written out, rather than becoming one dispatcher taking
+``**arguments``, because the SDK generates each tool's schema from its type hints and a
+dispatcher publishes no schema at all. Each body is one call into ``amr.toolcalls``.
 
 State is one in-process ``ReferenceSystem`` for the lifetime of the process, so a client
 sees its own writes and nothing survives a restart. ``AMR_FORGET_MODE`` sets the default
@@ -20,10 +25,17 @@ it with ``--scope NAME`` (or ``AMR_MCP_SCOPE``) to bind the connection to one sc
 argument then defaults to that scope and a call naming a different one is refused with
 ``scope:``. That is the whole of the trust model; mcp/README.md says it in prose.
 
+**Tracing.** ``--trace FILE`` (or ``AMR_MCP_TRACE``) appends one JSON line per tool call:
+sequence number, tool, arguments, and the result or the error code. ``amr replay FILE``
+re-executes those calls against a fresh system through this same translation and reports
+any value that came back different. A trace contains whatever was written through it, so
+it is a transcript of your memories and not a log of their shapes.
+
 Run it:
 
     python mcp/server.py                      # stdio, scope is the caller's to choose
     python mcp/server.py --scope team-sre     # stdio, bound to one scope
+    python mcp/server.py --trace run.jsonl    # stdio, recording every call
     AMR_FORGET_MODE=erase python mcp/server.py
 
 This directory has no ``__init__.py`` on purpose: a package here named ``mcp`` would
@@ -49,25 +61,10 @@ from mcp.server.mcpserver.exceptions import (  # noqa: E402
     ToolError as AnticipatedToolError,
 )
 
-from amr.protocol import (  # noqa: E402
-    Chain,
-    ConfidenceDelta,
-    CycleError,
-    ForgetMode,
-    ForgetReceipt,
-    ForgottenRecordError,
-    NotFoundError,
-    Origin,
-    ReadResult,
-    Record,
-    RevisionReceipt,
-    Scope,
-    ScopeError,
-    UnresolvedSourceError,
-)
+from amr import toolcalls  # noqa: E402
+from amr.protocol import ForgetMode  # noqa: E402
+from amr.toolcalls import ToolCallError, Tracer  # noqa: E402
 from systems.reference import ReferenceSystem  # noqa: E402
-
-DEFAULT_SCOPE = "default"
 
 INSTRUCTIONS = """\
 Declared provenance for agent memory. Every write may cite the memories it was derived
@@ -82,19 +79,10 @@ scope names a namespace, not an identity: this server does not authenticate you.
 started bound to one scope, omit the argument -- naming another scope is refused.
 """
 
-#: Protocol errors, mapped to the code a tool error is prefixed with. The prefix is part
-#: of the interface: a client can branch on it without parsing English.
-ERROR_CODES: tuple[tuple[type[Exception], str], ...] = (
-    (CycleError, "cycle"),
-    (UnresolvedSourceError, "unresolved_source"),
-    (ForgottenRecordError, "forgotten"),
-    (ScopeError, "scope"),
-    # ``NotFoundError`` is a ``LookupError``; both entries map to one code, because an
-    # adapter that raises the bare built-in still conforms (SPEC.md 3.1).
-    (NotFoundError, "not_found"),
-    (LookupError, "not_found"),
-    (ValueError, "invalid_argument"),
-)
+#: The codes a tool error is prefixed with. Defined once, in ``amr.toolcalls``, so the
+#: replay that compares against a recorded code reads the same table the server wrote it
+#: from. Re-exported because ``mcp/README.md`` documents it as part of this interface.
+ERROR_CODES = toolcalls.ERROR_CODES
 
 
 class ToolError(AnticipatedToolError):
@@ -107,148 +95,44 @@ class ToolError(AnticipatedToolError):
     """
 
 
-def _forget_mode(name: str | None) -> ForgetMode | None:
-    if name is None:
-        return None
-    try:
-        return ForgetMode(name)
-    except ValueError as error:
-        supported = ", ".join(mode.value for mode in ForgetMode)
-        raise ToolError(
-            f"invalid_argument: unknown forget mode {name!r}; one of {supported}"
-        ) from error
-
-
 def _default_mode() -> ForgetMode:
-    return _forget_mode(os.environ.get("AMR_FORGET_MODE")) or ForgetMode.TOMBSTONE
+    return toolcalls.forget_mode(os.environ.get("AMR_FORGET_MODE")) or ForgetMode.TOMBSTONE
+
+
+def _option(name: str, variable: str, argv: list[str] | None = None) -> str | None:
+    """``--name VALUE``, else ``--name=VALUE``, else the environment, else None."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    flag = f"--{name}"
+    if flag in arguments:
+        index = arguments.index(flag)
+        if index + 1 >= len(arguments):
+            raise SystemExit(f"{flag} takes a value")
+        return arguments[index + 1]
+    for argument in arguments:
+        if argument.startswith(f"{flag}="):
+            return argument.partition("=")[2]
+    value = os.environ.get(variable, "").strip()
+    return value or None
 
 
 def _bound_scope(argv: list[str] | None = None) -> str | None:
     """``--scope NAME``, else ``AMR_MCP_SCOPE``, else unbound. See the module docstring."""
-    arguments = list(sys.argv[1:] if argv is None else argv)
-    if "--scope" in arguments:
-        index = arguments.index("--scope")
-        if index + 1 >= len(arguments):
-            raise SystemExit("--scope takes a scope name")
-        return arguments[index + 1]
-    for argument in arguments:
-        if argument.startswith("--scope="):
-            return argument.partition("=")[2]
-    bound = os.environ.get("AMR_MCP_SCOPE", "").strip()
-    return bound or None
+    return _option("scope", "AMR_MCP_SCOPE", argv)
 
 
-# ------------------------------------------------------------------ translation
-
-
-def _record(record: Record) -> dict[str, Any]:
-    return {
-        "id": record.id,
-        "content": record.content,
-        "declared_confidence": record.declared_confidence,
-        "sources": sorted(record.sources),
-        "scope": record.scope,
-        "origin": (
-            None
-            if record.origin is None
-            else {"kind": record.origin.kind, "ref": record.origin.ref}
-        ),
-    }
-
-
-def _read_result(result: ReadResult) -> dict[str, Any]:
-    return {
-        "outcome": result.outcome.value,
-        "record": None if result.record is None else _record(result.record),
-    }
-
-
-def _chain(chain: Chain) -> dict[str, Any]:
-    return {
-        "root_id": chain.root_id,
-        "ancestor_ids": sorted(chain.ancestor_ids()),
-        "nodes": {
-            node.id: {
-                "id": node.id,
-                "declared_confidence": node.declared_confidence,
-                "sources": sorted(node.sources),
-                "tombstoned": node.tombstoned,
-                "opaque": node.opaque,
-            }
-            for node in sorted(chain.nodes.values(), key=lambda node: node.id)
-        },
-    }
-
-
-def _delta(delta: ConfidenceDelta) -> dict[str, Any]:
-    return {
-        "id": delta.id,
-        "before": delta.before,
-        "after": delta.after,
-        "inflated": delta.inflated,
-    }
-
-
-def _revision_receipt(receipt: RevisionReceipt) -> dict[str, Any]:
-    return {
-        "id": receipt.id,
-        "before": receipt.before,
-        "after": receipt.after,
-        "reason": receipt.reason,
-        "deltas": [_delta(delta) for delta in receipt.deltas],
-    }
-
-
-def _forget_receipt(receipt: ForgetReceipt) -> dict[str, Any]:
-    return {
-        "mode": receipt.mode.value,
-        "forgotten": sorted(receipt.forgotten),
-        "tombstoned": sorted(receipt.tombstoned),
-        "deltas": [_delta(delta) for delta in receipt.deltas],
-        "affected_scopes": [
-            {"id": memory_id, "scope": scope}
-            for memory_id, scope in receipt.affected_scopes
-        ],
-    }
-
-
-def _capabilities(system: ReferenceSystem) -> dict[str, Any]:
-    declaration = system.capabilities()
-    return {
-        "system": declaration.system,
-        "version": declaration.version,
-        "supported_forget_modes": sorted(
-            mode.value for mode in declaration.supported_forget_modes
-        ),
-        "default_forget_mode": declaration.default_forget_mode.value,
-        "empty_chain_convention": declaration.empty_chain_convention,
-        "revision": declaration.revision,
-        "revision_raise_supported": declaration.revision_raise_supported,
-        "scopes": declaration.scopes,
-        "cross_scope_derivation": declaration.cross_scope_derivation,
-        "durability": declaration.durability,
-        "notes": list(declaration.notes),
-    }
-
-
-def _translated(call):
-    """Run ``call``, re-raising a protocol error as a coded ToolError."""
-    try:
-        return call()
-    except ToolError:
-        raise
-    except Exception as error:
-        for exception_type, code in ERROR_CODES:
-            if isinstance(error, exception_type):
-                raise ToolError(f"{code}: {error}") from error
-        raise
+def _trace_path(argv: list[str] | None = None) -> Path | None:
+    """``--trace FILE``, else ``AMR_MCP_TRACE``, else no trace."""
+    value = _option("trace", "AMR_MCP_TRACE", argv)
+    return None if value is None else Path(value)
 
 
 # ----------------------------------------------------------------------- server
 
 
 def build_server(
-    system: ReferenceSystem | None = None, bound_scope: str | None = None
+    system: ReferenceSystem | None = None,
+    bound_scope: str | None = None,
+    trace: Path | None = None,
 ) -> MCPServer:
     """The nine record operations of SPEC.md 3 as tools, plus ``memory_capabilities``.
 
@@ -259,27 +143,39 @@ def build_server(
 
     ``bound_scope`` fixes the caller's scope for the connection. Unbound — the default —
     ``scope`` is an argument like any other and the server believes whatever it is told.
+    ``trace`` appends every call to a file that ``amr replay`` can re-execute.
     """
     memory = system or ReferenceSystem(default_forget_mode=_default_mode())
+    scoped = toolcalls.scope_binder(bound_scope)
+    tracer = (
+        None
+        if trace is None
+        else Tracer(
+            trace,
+            default_forget_mode=memory.capabilities().default_forget_mode,
+            bound_scope=bound_scope,
+        )
+    )
 
-    def scoped(requested: str | None) -> Scope:
-        """Which scope this call acts in, given what the caller asked for.
+    def call(tool: str, **arguments: Any) -> dict[str, Any]:
+        """One tool call, translated, recorded, and refused with a code if it must be.
 
-        Unbound, the caller decides and omitting the argument means ``default``. Bound,
-        omitting it means the bound scope and naming a different one is refused rather
-        than silently redirected: a client that believes it wrote to ``alpha`` and was
-        quietly given ``beta`` has been lied to about where its memory is. The refusal
-        carries the bound name, because this is a configuration mismatch — the scope of a
-        connection is not a secret from the client connected to it.
+        The arguments recorded are the ones the client sent — including the ``scope`` it
+        omitted, as an absent key — because that is what a replay has to re-send. What the
+        binding resolved them to is reconstructed from the trace's header, not stored per
+        call, so a trace cannot disagree with itself about which scope a session was in.
         """
-        if bound_scope is None:
-            return requested if requested is not None else DEFAULT_SCOPE
-        if requested is not None and requested != bound_scope:
-            raise ToolError(
-                f"scope: this server is bound to scope {bound_scope!r} and cannot act "
-                f"in {requested!r}; omit the argument or pass {bound_scope!r}"
-            )
-        return bound_scope
+        given = {name: value for name, value in arguments.items() if value is not None}
+        try:
+            result = toolcalls.dispatch(memory, tool, given, scoped)
+        except ToolCallError as error:
+            if tracer is not None:
+                tracer.record(tool, given, error=error)
+            raise ToolError(str(error)) from error
+        if tracer is not None:
+            tracer.record(tool, given, result=result)
+        return result
+
     server = MCPServer(
         name="agent-memory-reliability",
         version=memory.capabilities().version,
@@ -300,23 +196,15 @@ def build_server(
         origin_kind: str | None = None,
         origin_ref: str | None = None,
     ) -> dict[str, Any]:
-        scope = scoped(scope)
-        if (origin_kind is None) != (origin_ref is None):
-            raise ToolError(
-                "invalid_argument: origin_kind and origin_ref are given together or "
-                "not at all"
-            )
-        origin = None if origin_kind is None else Origin(kind=origin_kind, ref=origin_ref or "")
-        memory_id = _translated(
-            lambda: memory.write(
-                content,
-                declared_confidence,
-                sources=tuple(sources or ()),
-                scope=scope,
-                origin=origin,
-            )
+        return call(
+            "memory_write",
+            content=content,
+            declared_confidence=declared_confidence,
+            sources=sources,
+            scope=scope,
+            origin_kind=origin_kind,
+            origin_ref=origin_ref,
         )
-        return {"id": memory_id}
 
     @server.tool(
         description=(
@@ -325,8 +213,7 @@ def build_server(
         )
     )
     def memory_get(memory_id: str, scope: str | None = None) -> dict[str, Any]:
-        scope = scoped(scope)
-        return _read_result(_translated(lambda: memory.get(memory_id, scope=scope)))
+        return call("memory_get", memory_id=memory_id, scope=scope)
 
     @server.tool(
         description=(
@@ -336,8 +223,7 @@ def build_server(
         )
     )
     def memory_provenance(memory_id: str, scope: str | None = None) -> dict[str, Any]:
-        scope = scoped(scope)
-        return _chain(_translated(lambda: memory.provenance(memory_id, scope=scope)))
+        return call("memory_provenance", memory_id=memory_id, scope=scope)
 
     @server.tool(
         description=(
@@ -349,17 +235,11 @@ def build_server(
     def memory_effective_confidence(
         memory_id: str, scope: str | None = None
     ) -> dict[str, Any]:
-        scope = scoped(scope)
-        value = _translated(
-            lambda: memory.effective_confidence(memory_id, scope=scope)
-        )
-        return {"id": memory_id, "effective_confidence": value}
+        return call("memory_effective_confidence", memory_id=memory_id, scope=scope)
 
     @server.tool(description="Every memory derived from this one, transitively.")
     def memory_descendants(memory_id: str, scope: str | None = None) -> dict[str, Any]:
-        scope = scoped(scope)
-        found = _translated(lambda: memory.descendants(memory_id, scope=scope))
-        return {"id": memory_id, "descendants": sorted(found)}
+        return call("memory_descendants", memory_id=memory_id, scope=scope)
 
     @server.tool(
         description=(
@@ -374,21 +254,17 @@ def build_server(
         reason: str,
         scope: str | None = None,
     ) -> dict[str, Any]:
-        scope = scoped(scope)
-        return _revision_receipt(
-            _translated(
-                lambda: memory.revise(memory_id, declared_confidence, reason, scope=scope)
-            )
+        return call(
+            "memory_revise",
+            memory_id=memory_id,
+            declared_confidence=declared_confidence,
+            reason=reason,
+            scope=scope,
         )
 
     @server.tool(description="The revision history of a memory, oldest first.")
     def memory_revisions(memory_id: str, scope: str | None = None) -> dict[str, Any]:
-        scope = scoped(scope)
-        history = _translated(lambda: memory.revisions(memory_id, scope=scope))
-        return {
-            "id": memory_id,
-            "revisions": [_revision_receipt(receipt) for receipt in history],
-        }
+        return call("memory_revisions", memory_id=memory_id, scope=scope)
 
     @server.tool(
         description=(
@@ -402,11 +278,7 @@ def build_server(
     def memory_forget(
         memory_id: str, scope: str | None = None, mode: str | None = None
     ) -> dict[str, Any]:
-        scope = scoped(scope)
-        chosen = _forget_mode(mode)
-        return _forget_receipt(
-            _translated(lambda: memory.forget(memory_id, scope=scope, mode=chosen))
-        )
+        return call("memory_forget", memory_id=memory_id, scope=scope, mode=mode)
 
     @server.tool(
         description=(
@@ -415,11 +287,7 @@ def build_server(
         )
     )
     def memory_list_scope(scope: str | None = None) -> dict[str, Any]:
-        scope = scoped(scope)
-        return {
-            "scope": scope,
-            "ids": sorted(_translated(lambda: memory.list_scope(scope))),
-        }
+        return call("memory_list_scope", scope=scope)
 
     @server.tool(
         description=(
@@ -428,13 +296,13 @@ def build_server(
         )
     )
     def memory_capabilities() -> dict[str, Any]:
-        return _capabilities(memory)
+        return call("memory_capabilities")
 
     return server
 
 
 def main() -> None:
-    build_server(bound_scope=_bound_scope()).run(transport="stdio")
+    build_server(bound_scope=_bound_scope(), trace=_trace_path()).run(transport="stdio")
 
 
 if __name__ == "__main__":

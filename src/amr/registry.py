@@ -125,12 +125,26 @@ def systems() -> tuple[Registration, ...]:
     )
 
 
+def registration(name: str) -> Registration:
+    """One registered system by name, whatever ``SYSTEMS`` says.
+
+    ``SYSTEMS`` narrows *a run* — which systems the matrix has columns for. A caller that
+    has already named the one system it wants is not running a matrix, and filtering it
+    out would mean ``SYSTEMS=mine amr replay`` failed to find the system the trace was
+    recorded against. ``systems()`` is the filtered view; this is the lookup.
+    """
+    discover()
+    if name not in _REGISTRY:
+        available = ", ".join(sorted(_REGISTRY)) or "none"
+        raise LookupError(
+            f"no registered system named {name!r}; registered: {available}"
+        )
+    return Registration(name=name, factory=_REGISTRY[name], source=_SOURCES[name])
+
+
 def named(name: str, mode: ForgetMode | None = None) -> MemorySystem:
     """One registered system, built. For a script that wants a store and not a matrix."""
-    for registration in systems():
-        if registration.name == name:
-            return registration.build(mode)
-    raise LookupError(f"no registered system named {name!r}")
+    return registration(name).build(mode)
 
 
 def modes_for(registration: Registration) -> tuple[ForgetMode, ...]:

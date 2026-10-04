@@ -55,10 +55,10 @@ derived(declared 0.9), chain empty        effective(derived) = min(0.9, 1.0) = 0
 Forgetting the evidence strengthened the conclusion. Nothing is corrupted, no invariant breaks,
 no error is raised, and the number a downstream reader trusts went up. Under `tombstone` the
 value does not move; under `cascade` the derivative does not survive to be inflated; under
-`erase` it is guaranteed. The suite reports a DIVERGENCE rather
-than scoring it, because [SPEC.md §6.4](version2/SPEC.md) leaves the tension open and every way
-out costs something real. The same number is reachable with no deletion at all —
-[taxonomy/](taxonomy/). To watch it: `python examples/erasure_inflation.py`.
+`erase` it is guaranteed. The suite reports a DIVERGENCE rather than scoring it, because
+[SPEC.md §6.4](version2/SPEC.md) leaves the tension open and every way out costs something
+real. The same number is reachable with no deletion at all — [taxonomy/](taxonomy/). To watch
+it: `python examples/erasure_inflation.py`.
 
 ## Results
 
@@ -94,13 +94,13 @@ is special-cased. Deterministic policies over a seeded PRNG; no model in the loo
 In `ungated`, effective confidence is computed and ignored: nearly half of what was written
 descended from the weaker of two beliefs nobody reconciled, and a quarter was stated at 0.9 or
 above while its effective confidence sat at 0.40. In `surfaced` nothing is blocked and agents
-merely prefer stronger evidence; that alone takes inheritance to 5%. In `gated`, a memory below τ
-may still be read but may not be **cited**.
+merely prefer stronger evidence; that alone takes inheritance to 5%. In `gated`, a memory below
+τ may still be read but may not be **cited**.
 
-**gated is zero by construction at τ = 0.5: the injected belief and every descendant are
-bounded at 0.40 and cannot be cited. The gated bar demonstrates the boundary; the surfaced
-bar measures what visibility alone achieves.** `make contamination` reproduces all three; same
-seed, same bytes.
+**gated is zero by construction at τ = 0.5: the injected belief and every descendant are bounded
+at 0.40 and cannot be cited, so that bar demonstrates the boundary where the surfaced bar
+measures what visibility alone achieves.** `make contamination` reproduces all three; same seed,
+same bytes.
 
 ## Reproduce
 
@@ -111,9 +111,60 @@ make determinism       # twice in fresh subprocesses, compared byte for byte
 ```
 
 Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, no model is called. Every target wraps the `amr` command line, which is the real interface:
-`amr test | reproduce | determinism | demo | contamination | matrix | drift`. `make demo` prints
+`amr test | reproduce | determinism | demo | contamination | matrix | drift | replay`. `make demo` prints
 the declaration, the matrix and the divergence in fifteen lines; `make release-check` runs every
 gate, one line each.
+
+## Use it
+
+**From Claude Desktop, no terminal after setup.** `pip install -e ".[mcp]"`, point Desktop at
+`mcp/server.py`, and the layer is ten MCP tools. The numbers come from the tool, not from the
+model. [docs/try-it-with-claude.md](docs/try-it-with-claude.md) is a scripted run with the
+expected value for every step, checked by `make mcp-test` against a real server;
+[mcp/README.md](mcp/README.md) is the server. Start it with `--trace FILE` and `amr replay FILE`
+re-runs the session and compares every value it recorded.
+
+**From Python**, in full — this is [examples/use_it.py](examples/use_it.py) verbatim:
+
+```python
+"""The whole layer in one screen: write a chain, read the bound, forget the middle.
+
+Run it with ``python examples/use_it.py``. Nothing is configured and no model is called.
+"""
+
+from amr.registry import named
+
+memory = named("reference")  # default forget mode: tombstone
+
+incident = memory.write("checkout p99 regressed after the deploy", 0.90)
+hearsay = memory.write("someone in chat says it is the memory leak again", 0.40,
+                       sources=[incident])
+summary = memory.write("root cause: the memory leak", 0.95, sources=[hearsay])
+
+print(f"declared  {memory.get(summary).record.declared_confidence:.2f}")
+print(f"effective {memory.effective_confidence(summary):.2f}  <- bounded by the hearsay")
+
+receipt = memory.forget(hearsay)
+print(f"\nforget({hearsay}) mode={receipt.mode.value} forgotten={sorted(receipt.forgotten)}")
+for delta in receipt.deltas:
+    print(f"  {delta.id}: {delta.before:.2f} -> {delta.after:.2f}")
+print(f"get({hearsay}) -> {memory.get(hearsay).outcome.value}")
+print(f"effective {memory.effective_confidence(summary):.2f}  <- the bound survived the forget")
+```
+
+```
+declared  0.95
+effective 0.40  <- bounded by the hearsay
+
+forget(m002) mode=tombstone forgotten=['m002']
+  m003: 0.40 -> 0.40
+get(m002) -> forgotten
+effective 0.40  <- the bound survived the forget
+```
+
+A summary claiming 0.95 is bounded at 0.40 by the chat message two steps up it; the forget is a
+receipt rather than a return code; and the tombstone holds the bound where `erase` would raise it
+to 0.95. The snippet above, its output, and the file are asserted equal by the suite.
 
 ## Add your system
 
@@ -149,12 +200,12 @@ system can score perfectly here and retrieve badly, or the reverse.
 
 The provenance model is a deliberately small subset of W3C PROV and of warehouse-tradition
 data lineage: one node type, one edge type (*derived from*), no typed relations, no agent or
-activity distinction. What is added is the confidence arithmetic over that graph, the
-requirement that deletion have a declared and observable effect on descendants, and the
-treatment of a shortened chain as a first-class failure mode rather than an integrity error.
-Judgments — contradiction, corroboration, supersession — are records derived from what they
-judge, not edge types: that keeps the arithmetic terminating, and any model that produced one
-upstream of this layer rather than inside it.
+activity distinction. Added to it: the confidence arithmetic over that graph, the requirement
+that deletion have a declared and observable effect on descendants, and the treatment of a
+shortened chain as a first-class failure mode rather than an integrity error. Judgments —
+contradiction, corroboration, supersession — are records derived from what they judge, not
+edge types, which keeps the arithmetic terminating and any model that produced one upstream
+of this layer.
 
 ## Limitations
 

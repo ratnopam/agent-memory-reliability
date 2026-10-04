@@ -1,6 +1,6 @@
 """``amr`` — the command line the Makefile calls. ``python -m amr`` is the same thing.
 
-Seven subcommands, and the Makefile is a convenience over them rather than the other way
+Eight subcommands, and the Makefile is a convenience over them rather than the other way
 round, so nothing in this repository can only be done by GNU make:
 
 * ``test``          run the property suite, pytest's own output, nothing added
@@ -10,6 +10,7 @@ round, so nothing in this repository can only be done by GNU make:
 * ``matrix``        render an existing ``raw.json`` as an SVG table
 * ``contamination`` the three-role simulation, three arms
 * ``drift``         the README's matrix, figures and chart against committed results
+* ``replay``        re-execute a recorded tool-call trace and compare every result
 
 ``reproduce`` exits non-zero if any check FAILed. A DIVERGENCE does not fail the command:
 it is a reported disagreement with an open question in the specification, and a build that
@@ -132,6 +133,20 @@ def cmd_drift(raw: Path | None) -> int:
     return 0
 
 
+def cmd_replay(traces: list[Path], system: str) -> int:
+    """Re-run recorded tool calls and report any value that came back different.
+
+    Non-zero on the first disagreement across every trace, not the first trace that
+    disagrees: a reader fixing one difference wants to see the others.
+    """
+    from amr import replay as replay_module
+
+    runs = replay_module.replay_all(traces, system)
+    for run in runs:
+        print(run.report(), file=sys.stdout if run.identical else sys.stderr)
+    return 0 if all(run.identical for run in runs) else 1
+
+
 def cmd_contamination(seed: int, out: Path | None, quiet: bool, rounds: int | None) -> int:
     from scenarios.contamination import run as contamination
 
@@ -157,6 +172,7 @@ USAGE = """the conformance suite for agent memory reliability.
   amr matrix          render an existing raw.json as an SVG table
   amr contamination   the three-role simulation: ungated, surfaced, gated
   amr drift           does README.md render the committed matrix, figures and chart?
+  amr replay          re-execute a recorded tool-call trace; non-zero if a value moved
 
 reproduce exits non-zero if any check FAILed. A DIVERGENCE does not: it is a reported
 disagreement with an open question in the specification, and a build that went red on it
@@ -231,6 +247,19 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="a results/<date>/raw.json (default: the newest one committed)",
     )
+
+    replay = commands.add_parser(
+        "replay",
+        help="re-execute a recorded tool-call trace and compare every result",
+    )
+    replay.add_argument(
+        "traces", type=Path, nargs="+", help="one or more trace files (JSON lines)"
+    )
+    replay.add_argument(
+        "--system",
+        default="reference",
+        help="the registered system to replay against (default: reference)",
+    )
     return parser
 
 
@@ -250,6 +279,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_matrix(args.raw, args.svg, args.out)
     if args.command == "drift":
         return cmd_drift(args.raw)
+    if args.command == "replay":
+        return cmd_replay(args.traces, args.system)
     return cmd_contamination(args.seed, args.out, args.quiet, args.rounds)
 
 
