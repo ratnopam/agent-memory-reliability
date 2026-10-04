@@ -34,7 +34,7 @@
 <rect x="40" y="560" width="330" height="150" rx="7" fill="#E3F3EC" stroke="#0F6E56" stroke-width="1.5"/>
 <text x="54" y="585.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#0F6E56">systems/reference/ — reference impl</text>
 <text x="54" y="605.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">store.py · confidence.py · forget.py</text>
-<text x="54" y="621.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">scope.py · system.py — dict-backed, stdlib only</text>
+<text x="54" y="621.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">system.py — dict-backed, stdlib only</text>
 <text x="54" y="637.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">Capabilities: tombstone | cascade | erase</text>
 <text x="54" y="653.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">default tombstone · empty chain = 1.0</text>
 <text x="54" y="669.2" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#5A5852">revision logged · scopes native</text>

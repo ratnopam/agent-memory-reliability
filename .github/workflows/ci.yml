@@ -31,11 +31,11 @@ jobs:
       - name: Conformance suite
         run: make test
 
-      - name: Reproduce the results matrix
-        run: make reproduce
-
-      - name: Contamination simulation
-        run: make contamination
+      # The producer: `reproduce` and then the simulation, into results/<today>/. Every
+      # other target writes outside the tree, so this is the one step that leaves the
+      # artefacts the upload step below collects. See docs/RELEASE.md step 2.
+      - name: Produce the results
+        run: make results
 
       # A run whose results are not byte-identical to the run before it cannot support a
       # claim on a poster. This step failing fails the build, on purpose. It covers the
@@ -78,6 +78,11 @@ jobs:
       - name: Documentation links resolve
         run: python .github/check_links.py
 
+      # The architecture diagram is the only document no test reads, and it names source
+      # files and counts checks. It named a scope.py this repository never contained.
+      - name: The diagram's facts hold
+        run: python .github/check_diagram.py
+
       # The results document is the artefact the claims are made from, so every matrix
       # leg publishes its own copy and two legs can be diffed against each other.
       - name: Upload results
@@ -106,3 +111,30 @@ jobs:
 
       - name: MCP stdio integration test
         run: python -m pytest mcp/ -v
+
+  # The four commands docs/adding-a-system.md promises a stranger, run as a stranger runs
+  # them. `properties/test_external_adapter_example.py` covers the same ground with a
+  # hand-written dist-info, because the suite is not allowed to reach the network; this
+  # job is the only place the real `pip install` of an external adapter happens, with
+  # setuptools fetched from an index and the entry point written by the build backend
+  # rather than by us. A packaging change that breaks discovery is invisible everywhere
+  # else.
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the suite
+        run: python -m pip install -e ".[test]"
+
+      - name: Install the example adapter, with real pip
+        run: python -m pip install -e examples/external-adapter
+
+      # Non-zero on purpose: the example declares less than a conforming system, so it has
+      # failures, and the gate asserts they are exactly the five its declaration predicts.
+      - name: The example fails exactly what it declares
+        run: python .github/check_example_adapter.py
