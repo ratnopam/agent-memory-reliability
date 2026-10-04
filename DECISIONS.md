@@ -4,6 +4,27 @@ Choices a reader could reasonably have made differently. Decisions forced by the
 specification, and ambiguities in it, are not here — those are in
 [design-notes/spec-feedback.md](design-notes/spec-feedback.md).
 
+## The specification
+
+**`residue` was reversed rather than implemented.** v0.4 introduced a fourth forget mode and
+v0.5 wrote it into §5's `effective` rule; neither revision shipped a line of code for it. The
+two options were to build it — a `floor` field, a `floors` reader, two new checks, a fourth
+column in every matrix — or to delete the text. Deleting it won because the suite was the
+evidence: 78 cells are byte-identical before and after the deletion, which is only possible
+for text no check could read. A specification clause the measurement cannot reach is a claim,
+and this document's whole position is that claims get measured. The idea is kept as open
+question 8, phrased without the mechanism, and the argument is
+[entry 37](design-notes/spec-feedback.md). The reversal is here rather than only there
+because choosing deletion over implementation was a judgment, not something the text forced.
+
+**The specification's own changelog keeps its 0.4 and 0.5 entries verbatim.** Those entries
+describe `residue` in the present tense and a reader of v0.6 will find a mode the document no
+longer defines. Rewriting them would be tidier and would also erase the fact that the
+specification accepted a mode it never implemented and then withdrew it, which is the more
+useful thing for a reader deciding how much to trust a draft. For the same reason the earlier
+spec-feedback entries, including 32 and 33, are left as written; entry 37 sits beside them
+rather than editing them.
+
 ## Dependencies
 
 **The package has no runtime dependencies.** `pyproject.toml` declares

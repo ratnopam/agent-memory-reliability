@@ -122,7 +122,7 @@ and start again at step 1 — the gates are cheap and a wrong matrix in a tagged
 
 ```
 git tag -a v0.1.0    -m "the conformance suite, the reference, and the erasure-inflation finding"
-git tag -a spec-v0.5 -m "specification draft v0.5: 26 numbered checks"
+git tag -a spec-v0.6 -m "specification draft v0.6: 26 numbered checks"
 git push origin main --follow-tags
 ```
 

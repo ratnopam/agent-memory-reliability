@@ -1,14 +1,14 @@
 # Agent Memory Reliability Specification
 
-**Version:** 0.5 (draft)
+**Version:** 0.6 (draft)
 **License:** Apache 2.0
 
 Draft. `version1/SPEC.md` (0.3) is frozen. Every numbered entry in
 `design-notes/spec-feedback.md` is folded in here: 1–19 came from building a conforming
 implementation and a suite against 0.3 and finding the text silent, ambiguous, or
-self-contradicting; 20–24 and 25–33 were raised against the drafts that followed and are
-applied directly. The changelog at the foot of this file names each one against the version
-that absorbed it.
+self-contradicting; 20–24, 25–33 and 34–36 were raised against the drafts that followed and
+are applied directly. The changelog at the foot of this file names each one against the
+version that absorbed it.
 
 ---
 
@@ -42,7 +42,6 @@ A **memory store** holds **records**. Each record has:
 | `sources` | set of `id` | The records this one was derived from. May be empty. |
 | `scope` | opaque identifier | The isolation boundary the record belongs to (§7). |
 | `origin` | typed reference, or none | Descriptive only. What an external root refers to: a document, URL, tool call, or conversation turn. Never affects arithmetic. |
-| `floor` | float in [0.0, 1.0], or none | A bound pushed into this record by a `residue` forget of an ancestor (§6.1). State, not content. Participates in `effective` as a third term. Survives a reopen. Never readable except through `effective_confidence` (open question 8). |
 
 The `sources` relation over all records forms the **provenance graph**. A record with
 empty `sources` is a **root**. A record reachable from `m` by following `sources`
@@ -135,28 +134,36 @@ mechanism the specification declines to name. `grants(s)` returns the reader sco
 
 ### 3.1 Error vocabulary
 
-Five failure signals are normative. An adapter author must be able to learn what an
-operation raises from this table alone, without reading a reference implementation.
+Six failure signals are normative; five are raised by the operation set and the sixth only
+by opening a stored snapshot. An adapter author must be able to learn what an operation
+raises from this table alone, without reading a reference implementation.
 
 | Signal | Raised by | Condition |
 |---|---|---|
 | `UnresolvedSourceError` | `write` | Any id in `sources` does not resolve for the writing scope: it never existed, or it exists in another scope with no grant (I1.6, I4.1). The two cases MUST NOT be distinguishable. |
 | `CycleError` | `write`, and any operation that opens a stored snapshot | The requested edges would close a cycle, or a snapshot's edges contain one (I1.1, P1.7). |
-| `ForgottenRecordError` | `write`, `revise`, `provenance`, `effective_confidence`, `descendants`, `revisions` | The target — or, for `write`, a cited source — has been forgotten and no longer has the state the operation needs. A write MUST NOT cite a forgotten record, tombstone included (§6.2). `provenance`, `effective_confidence`, `descendants`, and `revisions` answer for a tombstone, which retains its chain position and its recorded history, and fail for a record removed by `cascade`, `erase`, or `residue`. |
-| `NotFound` | every operation taking an `id`, `revisions` included | No record with that id is visible to the calling scope. `get` reports this as an outcome rather than an error; the others fail. |
+| `ForgottenRecordError` | `write`, `revise`, `provenance`, `effective_confidence`, `descendants`, `revisions` | The target — or, for `write`, a cited source — has been forgotten and no longer has the state the operation needs. A write MUST NOT cite a forgotten record, tombstone included (§6.2). `provenance`, `effective_confidence`, `descendants`, and `revisions` answer for a tombstone, which retains its chain position and its recorded history, and fail for a record removed by `cascade` or `erase`. |
+| `NotFoundError` | every operation taking an `id`, `revisions` included | No record with that id is visible to the calling scope. `get` reports this as an outcome rather than an error; the others fail. The type MUST be catchable as a `LookupError` (Python) or the host language's equivalent lookup failure, so that existing callers are not broken by the name. |
 | `ScopeError` | `revise`, `forget` | The target *is* visible to the calling scope through a grant, and the calling scope does not own it. |
+| `StoreIntegrityError` | any operation that opens a stored snapshot | A live record in the snapshot cites a source id the snapshot does not contain. Validation MUST reject the snapshot; an implementation MUST NOT open it with the dangling edge dropped, which silently truncates a chain and inflates every effective confidence below it. |
+
+Where a snapshot is both cyclic and dangling, the dangling edge is reported first: it names
+a specific missing id, which is actionable, where a cycle names a set.
+
+One type covers both "no such id" and "an id in a scope you cannot see". That is not an
+omission: a second type for the second case would be the existence oracle §7 rules out.
 
 Four consequences worth stating, because each one closes an oracle:
 
 - An operation on a record the calling scope cannot see behaves exactly as it would for
-  an id that never existed — `NotFound`, not "forbidden". A permission error on an
+  an id that never existed — `NotFoundError`, not "forbidden". A permission error on an
   invisible record is an existence oracle: it tells the caller that some id exists
   somewhere, which is the side channel §7 exists to rule out. This holds for *every*
   operation, not only reads, because the oracle does not care which operation leaks it.
 - `ScopeError` is therefore reachable only for a record the caller can already read. It
   leaks nothing, and it is required: a read grant conveys reading, and a reader that
   could `revise` or `forget` the owner's record would make I4.2 a grant of everything.
-- `NotFound` is checked before `ForgottenRecordError`, and before `ScopeError`. A caller
+- `NotFoundError` is checked before `ForgottenRecordError`, and before `ScopeError`. A caller
   learns that a record was forgotten, or that it is someone else's, only if it could have
   seen the record.
 - The one deliberate exception to scope-bound reporting is the forget receipt (I4.4),
@@ -251,18 +258,6 @@ effective(m) = min( declared(m), min{ effective(a) : a in sources(m) } )
 min over the empty set = 1.0
 ```
 
-Where `m` carries a `floor` (§2, pushed in by a `residue` forget of an ancestor), the rule
-takes a third term:
-
-```
-effective(m) = min( declared(m), min{ effective(a) : a in sources(m) }, floor(m) )
-```
-
-A record with no floor is unchanged, and the empty-chain convention is unaffected either
-way: `min(∅)` is still the vacuous bound over the *ancestor* set, and a floor is not an
-ancestor. A record with a floor and no surviving ancestors is bounded by `min(declared,
-floor)`, which is the whole point of the mode.
-
 The empty-set convention is stated explicitly because it is load-bearing. `min(∅) = 1.0`
 is the vacuous upper bound: a record with no ancestors is bounded only by its own
 declared confidence. This is the correct reading for roots. It is also the mechanism
@@ -326,9 +321,6 @@ result, and it is reproducible with a one-line configuration change. If the decl
 removed the leaf, the comparison has no right-hand side and the check passes vacuously;
 the receipt (P3.5) is where the removal is verified.
 
-A system declaring `residue` passes P2.5 without any check being edited: the floor supplies
-the bound the removed ancestor was providing, so `effective_after ≤ effective_before` holds.
-
 ---
 
 ## 6. P3 — Forget operations
@@ -347,23 +339,6 @@ An implementation MUST support at least one and MUST declare which:
 - **`erase`** — the record's content and edges are removed; the id survives only as a
   forgotten-id marker (§6.2). Descendants survive with shortened chains. I2.5 is violated
   by construction.
-- **`residue`** — *declarable, not a default.* The record's content and edges are removed —
-  the id survives only as a forgotten-id marker (§6.2) — and before removal its effective
-  confidence contribution is
-  pushed into each surviving descendant as a bare **floor**: a number the descendant now
-  carries as a property of itself, with no reference to where it came from. The
-  descendant's effective confidence is the minimum of its declared value, its surviving
-  chain, and its floor. I2.5 holds, because the floor is exactly the bound the removed
-  ancestor was providing.
-
-  Floors MUST compose. When several ancestors of one record are erased under `residue`,
-  the record's floor is the minimum of the floors each removal contributed, so the order
-  of the removals does not change the result. A record's floor MUST survive a reopen
-  (I1.5) and MUST propagate to that record's own descendants through the ordinary
-  weakest-link walk, since it participates in `effective` like any other bound.
-
-  `residue` is the mode for a deletion obligation that has to be honoured without
-  inflating anything downstream. What it costs is in §6.4.
 
 ### 6.2 Universal post-conditions
 
@@ -395,7 +370,7 @@ Two further post-conditions govern what a forgotten record can still do:
 
 - A tombstoned record remains walkable: `provenance` and `effective_confidence` answer
   for it, since §6.1 retains its `declared_confidence` and `sources`. For a record
-  removed by `cascade`, `erase`, or `residue`, those operations fail. `get` returns
+  removed by `cascade` or `erase`, those operations fail. `get` returns
   `Forgotten` in every case. Returning an empty chain for a removed record would let a
   caller read a deleted record as a root with no ancestors, which is erasure inflation
   arriving by a different route.
@@ -443,14 +418,6 @@ available resolution costs something real:
   retained record about a subject who asked to be forgotten. Whether that satisfies a
   deletion obligation is a legal question, not an engineering one.
 - **Cascade always.** Deleting one source destroys unrelated downstream work.
-- **`residue`.** The floor keeps the number honest and retains nothing about the removed
-  record beyond the forgotten-id marker every mode keeps (§6.2). What it costs is explanation: the descendant is capped and can no longer say
-  by what. A reader who asks "why is this 0.4 when everything in its chain is above 0.9"
-  has no answer inside the store, which is a worse position than a tombstone leaves them
-  in. And a floor is itself a small inference leak — in a graph of two or three records,
-  a floor that appears at the moment a deletion request is honoured says something about
-  the deleted record's declared confidence. That leak shrinks as the graph grows and does
-  not vanish.
 
 Implementations MUST declare which they chose. The conformance suite records the
 divergence rather than scoring it.
@@ -555,6 +522,12 @@ declaration as invalid rather than assume a value for it. Two declarations are m
 compared, by a reader and by a diff, and an unordered set or an implied default makes both
 comparisons unreliable.
 
+`notes` is the one field a declaration MAY omit. It carries prose a reader needs and no
+check reads it; everything a check reads is required. The exemption is stated here rather
+than left to be inferred, because "an omitted field is not a default" read strictly makes
+every field including `notes` mandatory and non-empty, and a declaration with nothing to
+say in prose should not have to invent something.
+
 ---
 
 ## 9. Result states
@@ -608,10 +581,9 @@ matrix.
    more expressive, but no one has yet offered a confidence rule for them that stays
    both defensible and terminating. §2.2 is the current answer. A better one would
    change the specification.
-8. Does `residue` need to say how a floor is presented to a reader? §6.1 makes the floor
-   observable through `effective_confidence` and nothing else, which is what makes it a
-   bare floor rather than a tombstone by another name. A reader who cannot ask "why" may
-   be worse off than one told "an ancestor was deleted".
+8. Could a forget leave only a bound on its descendants, with no record and no
+   explanation? Nothing would inflate and nothing about the subject would be retained,
+   but a descendant could no longer say why it is capped.
 9. Is a grant the right granularity? §7 makes a grant scope-wide — B may read every record
    A owns, present and future — where a per-record grant would let A share one piece of
    evidence without exposing the rest of its scope. Scope-wide is simpler to reason about
@@ -625,6 +597,29 @@ matrix.
 
 ## Changelog
 
+- **0.6 (draft)** — **F8 and F9 are reversed, and the fourth forget mode is withdrawn.**
+  0.4 added `residue` and 0.5 expressed it in the arithmetic: §2 gained a `floor` field,
+  §5's `effective` rule took a third term, and §5 stated that a declaring system passed
+  P2.5 unedited. All of that is removed — the `floor` row, the three-term rule, the
+  P2.5 sentence, the `residue` bullets in §6.1 and §6.4, and the mode's name in §3.1 and
+  §6.2. The reason is that `residue` was normative text no implementation could be held
+  to: it was proposed, written into the arithmetic, and never built, so for two revisions
+  the specification required a field the suite had no check for and the reference had no
+  code for. Specifying a mode in advance of anyone implementing one inverts how every
+  other clause here was arrived at, which was to build the thing and then write down what
+  broke. The idea survives as **open question 8**, rewritten to ask whether a forget could
+  leave only a bound — no record, no explanation — rather than to ask how a floor should be
+  presented. The empty-chain convention, the three implemented modes, and every numbered
+  check are unchanged: twenty-six, as in 0.5. **34** (entry 34): §3.1's `NotFound` row is
+  renamed `NotFoundError`, with the type required to be catchable as a `LookupError` so the
+  rename breaks no caller, and one sentence saying that one type covering both "no such id"
+  and "an id in a scope you cannot see" is the §7 position and not an omission. **35**
+  (entry 35): §8 states the `notes` exemption explicitly — it is the single field a
+  declaration may omit. **36** (entry 36): §3.1 gains a sixth signal,
+  `StoreIntegrityError`, for a snapshot whose live record cites an id the snapshot does not
+  contain, with the requirement that such a snapshot MUST be rejected rather than opened
+  with the dangling edge dropped; "five failure signals" becomes six, and the reporting
+  order against a cycle is stated.
 - **0.5 (draft)** — the nine fixes raised against 0.4, entries 25–33 in
   `design-notes/spec-feedback.md`. **F1** (entry 25): §6.2 says every mode retains the
   forgotten record's id in a forgotten-id set, which is what makes I3.1 and I3.4 statable

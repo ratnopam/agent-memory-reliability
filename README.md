@@ -36,7 +36,7 @@ identifier and every confidence that moved.
 revocable grant; a cross-scope ancestor contributes confidence without leaking content; a
 forget crosses the boundary; interleaved writes produce one well-formed DAG.
 
-The normative text is [version2/SPEC.md](version2/SPEC.md), draft v0.5: 26 numbered checks, one
+The normative text is [version2/SPEC.md](version2/SPEC.md), draft v0.6: 26 numbered checks, one
 test each. [version1/SPEC.md](version1/SPEC.md) is frozen at the version the first results were
 produced against.
 

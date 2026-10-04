@@ -74,20 +74,20 @@ own, as long as the name it raises is catchable as the one in the right-hand col
 | `UnresolvedSource` | `UnresolvedSourceError` | A write cites an id that does not resolve for the writing scope. Nothing is persisted. |
 | `Cycle` | `CycleError` | An edge would make a record its own ancestor. Reachable only where ids are caller-supplied — a write, or a snapshot being opened. |
 | `ForgottenRecord` | `ForgottenRecordError` | The target of a mutation, or an id cited by a write, belongs to a forgotten record — a tombstone included. |
-| `NotFound` | `NotFoundError` (a `LookupError`) | No record with that id is visible to the calling scope. One answer for "no such id" and for "another scope's id": telling them apart is an existence oracle (§7). `get` reports this as its `NOT_FOUND` outcome and does not raise. |
+| `NotFoundError` | `NotFoundError` (a `LookupError`) | No record with that id is visible to the calling scope. One answer for "no such id" and for "another scope's id": telling them apart is an existence oracle (§7). `get` reports this as its `NOT_FOUND` outcome and does not raise. |
 | `Scope` | `ScopeError` | The caller can *read* the record through a grant but may not do what it asked — mutate a record it does not own. Distinct from `NotFoundError`, which says nothing about whether the record exists. |
+| `StoreIntegrityError` | `StoreIntegrityError` | A snapshot being opened has a *dangling* edge: a live record cites an id the snapshot does not contain. Raised by the reference's store, and the sixth signal §3.1 names. |
 
 `NotFoundError` subclasses `LookupError`, so an adapter that raises the bare built-in still
 conforms. The named type is what lets a caller say *which* lookup failed.
 
-One case has no §3.1 signal: a snapshot that opens with a *dangling* edge — a live record
-citing an id the snapshot does not contain. The reference raises its own
-`StoreIntegrityError` there, outside the §3.1 vocabulary, and `CycleError` for a cyclic
-snapshot. Both are rejections of a corrupt snapshot; the suite only requires that opening
-one fails rather than silently truncating the chain (P1.7). If you implement `Reopenable`,
-raise whatever your store raises for corruption; see
-[design-notes/spec-feedback.md](../design-notes/spec-feedback.md) entry 36 for the
-proposed §3.1 text that would name it.
+A corrupt snapshot has two shapes and both must be rejected. A dangling edge raises
+`StoreIntegrityError`, a cyclic one raises `CycleError`, and where a snapshot is both the
+dangling edge is reported first, because it names a specific missing id. The suite requires
+that opening such a snapshot *fails* rather than silently truncating the chain (P1.7) —
+truncation inflates every effective confidence below the break, which is the finding this
+repository exists to measure. If you implement `Reopenable`, raise whatever your store
+raises for corruption, as long as it is not nothing.
 
 ## 2. What you declare, and what it costs
 
