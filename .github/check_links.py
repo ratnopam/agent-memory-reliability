@@ -5,6 +5,11 @@ that was renamed is the cheapest possible way to look careless. So the links are
 rather than trusted, in the places a first-time reader lands: the README, the contributing
 guide, the changelog, and everything under ``docs/``.
 
+``.claude/skills/`` is checked for a different reason. A skill is instructions an agent
+follows without a person reading them first, so a link that has gone stale there is not an
+embarrassment, it is an agent confidently telling somebody to open a file that is not
+there. Same gate, because the failure is worse and not better.
+
 Only relative targets are checked. An external URL is somebody else's uptime and this
 script will not reach the network to find out; ``http``, ``https`` and ``mailto`` are
 skipped deliberately. A bare ``#fragment`` is skipped too: this checks that files exist,
@@ -34,6 +39,7 @@ def documents() -> list[Path]:
     """The pages a reader arrives at. One line to add another."""
     found = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "CHANGELOG.md"]
     found.extend(sorted((ROOT / "docs").rglob("*.md")))
+    found.extend(sorted((ROOT / ".claude" / "skills").rglob("*.md")))
     return [path for path in found if path.is_file()]
 
 

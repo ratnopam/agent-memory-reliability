@@ -8,6 +8,38 @@ changelog at the top of [version2/SPEC.md](version2/SPEC.md), and
 
 ## [Unreleased]
 
+### Added
+
+- A **Use it** section in the README: the whole layer in one screen, embedded verbatim from
+  [examples/use_it.py](examples/use_it.py) with its real output, and both asserted equal to the file
+  by the suite.
+- The scripted Claude Desktop run in [docs/try-it-with-claude.md](docs/try-it-with-claude.md) is now
+  a test. Every act is replayed against a real server over stdio and every documented expectation is
+  asserted; nine of them were corrected to match what the server actually returns, and two options
+  the document never mentioned — a scope-bound server and tracing — are written down.
+- Tracing and replay. The MCP server takes `--trace FILE` (or `AMR_MCP_TRACE`) and records one
+  canonical JSON line per call with no timestamps; `amr replay FILE` re-executes the session through
+  the same translation and reports every value that moved. The scripted demo is committed as
+  [examples/traces/scripted-demo.jsonl](examples/traces/scripted-demo.jsonl) and replayed by the
+  suite, with a test that alters one recorded value to prove the comparison can fail.
+- Write-through persistence as a wrapper, not a second implementation
+  ([systems/persistent/](systems/persistent/)). `WriteThrough` composes the unchanged reference
+  system and persists every mutation through a four-method backend, one stored item per record;
+  `SQLiteBackend` is such a backend over the standard library, declaring `durability: "durable"`.
+  Reopening rebuilds through the existing snapshot reader, so a reopen and a cold open from a file
+  are one code path — checked across a real process boundary rather than within one process.
+- Default and extra systems. Registration takes a `default` flag: the published matrix is the default
+  run, and a system is measured only when `SYSTEMS` names it or `AMR_EXTRAS=1` asks for the extras.
+  Naming something unknown, or something whose optional dependency is absent, prints the inventory
+  and the extra to install. New: `amr systems`, `amr reproduce --extras`, `make extras`,
+  `make extras-test`, and `results/extras/<date>/`, which the drift gate ignores along with
+  everything under `results/` that is not a date.
+- A skill for running the suite from Claude Code
+  ([.claude/skills/conformance-run/SKILL.md](.claude/skills/conformance-run/SKILL.md)): it measures a
+  declared system into a git-ignored scratch directory, explains the matrix without inventing a
+  score, and reads the specification row behind every FAIL. Its frontmatter, every command it names,
+  every path it links and the sentences it must not contain are all asserted by the suite.
+
 ### Changed
 
 - Specification draft 0.6. The fourth forget mode `residue` and its `floor` field are withdrawn:

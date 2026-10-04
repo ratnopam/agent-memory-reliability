@@ -129,6 +129,11 @@ expected value for every step, checked by `make mcp-test` against a real server;
 [mcp/README.md](mcp/README.md) is the server. Start it with `--trace FILE` and `amr replay FILE`
 re-runs the session and compares every value it recorded.
 
+**From Claude Code**, ask it to run the suite:
+[.claude/skills/conformance-run/SKILL.md](.claude/skills/conformance-run/SKILL.md) is a skill that
+measures a declared system into a scratch directory and explains the matrix it got, including what
+each FAIL requires and which capability field it follows from.
+
 **From Python**, in full — this is [examples/use_it.py](examples/use_it.py) verbatim:
 
 ```python

@@ -229,5 +229,16 @@ design-notes/HANDOFF-*.md
 # Local agent and editor configuration. Untracked files count as a dirty tree when
 # `raw.json` stamps its git SHA, so anything local has to be ignored or the committed
 # results claim to come from a tree nobody can reproduce.
-.claude/
+#
+# The exception is the one published skill. Negating a path inside an ignored directory
+# does not work — git does not look inside it — so the directories are ignored by their
+# contents and the skill is named back in. Everything else local stays untracked.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/conformance-run/
 docs/frames/
+
+# Where the conformance-run skill writes. Somebody else's run of the suite is not a
+# result this repository publishes; results/<date>/ is produced deliberately.
+.amr-runs/

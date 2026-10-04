@@ -38,6 +38,7 @@ from test_server import Call, errored, run_session, text_of
 
 ROOT = Path(__file__).resolve().parent.parent
 TRACE = ROOT / "examples" / "traces" / "scripted-demo.jsonl"
+DOCUMENT = ROOT / "docs" / "try-it-with-claude.md"
 
 #: The document's section 2 rule: one scope for the whole script.
 DEMO = "demo"
@@ -67,8 +68,11 @@ async def _effective(call: Call, memory_id: str) -> float:
 
 
 async def act_0_what_the_system_declares(call: Call) -> None:
-    """Expect: forget modes cascade, erase, tombstone; default tombstone; empty chain
-    1.0; revision logged; durability round-trip."""
+    """
+    Expect: forget modes `cascade`, `erase`, `tombstone`; default `tombstone`; empty
+    chain `1.0`; revision `logged`; durability `round-trip`. The capabilities tool is
+    the one tool that takes no scope, so rule 2 does not apply to it.
+    """
     declaration = await call("memory_capabilities")
     assert declaration["supported_forget_modes"] == ["cascade", "erase", "tombstone"]
     assert declaration["default_forget_mode"] == "tombstone"
@@ -80,8 +84,12 @@ async def act_0_what_the_system_declares(call: Call) -> None:
 async def act_1_confidence_cannot_outscore_its_weakest_source(
     call: Call, ids: Ids
 ) -> None:
-    """Expect: ids m001, m002, m003. Effective for c is 0.40 at declared 0.95. The
-    provenance walk lists m002 and m001."""
+    """
+    Expect: ids `m001`, `m002`, `m003`. Effective for `c` is **0.40** (declared 0.95).
+    The provenance walk lists `m001` and `m002` as ancestors, and carries each node's
+    declared confidence — which is where the declared 0.95 comes from, so step 2 needs
+    no third call.
+    """
     ids["a"] = await _write(
         call,
         "Incident report: checkout latency degraded after the 14:05 deploy",
@@ -110,9 +118,12 @@ async def act_1_confidence_cannot_outscore_its_weakest_source(
 async def act_2_revise_a_source_and_everything_below_it_moves(
     call: Call, ids: Ids
 ) -> None:
-    """Expect: receipt before 0.90, after 0.20, with m002 and m003 each moving
-    0.40 -> 0.20. Effective for b and c is 0.20. History shows one entry with the
-    reason."""
+    """
+    Expect: receipt before 0.90, after 0.20, with `m002` and `m003` each moving 0.40 →
+    0.20. Effective for `b` and `c` is **0.20**. History shows one entry, with the
+    reason and with no deltas of its own: the log records what was revised, and the
+    deltas were in the live receipt.
+    """
     receipt = await call(
         "memory_revise",
         memory_id=ids["a"],
@@ -141,9 +152,12 @@ async def act_2_revise_a_source_and_everything_below_it_moves(
 
 
 async def act_3_forget_mode_tombstone(call: Call, ids: Ids) -> None:
-    """Expect: ids m004-m006. Step 7: 0.40. Receipt: mode tombstone, m005 forgotten,
-    m006 delta 0.40 -> 0.40. ``get e`` reports forgotten, not "not found". Effective for
-    f stays 0.40, and the walk still passes through m005 marked as a tombstone."""
+    """
+    Expect: ids `m004`–`m006`. Step 7: **0.40**. Receipt: mode tombstone, `m005` under
+    both `forgotten` and `tombstoned`, `m006` delta 0.40 → 0.40. `get e` reports
+    **forgotten** (not "not found") with a null record. Effective for `f` stays
+    **0.40**, and the walk still passes through `m005`, now marked `tombstoned`.
+    """
     ids["d"] = await _write(call, "Runbook: p99 checkout SLO is 250 ms", 0.90)
     ids["e"] = await _write(
         call, "Customer chat paraphrase: the SLO is about 400 ms", 0.40, [ids["d"]]
@@ -179,10 +193,13 @@ async def act_3_forget_mode_tombstone(call: Call, ids: Ids) -> None:
 
 
 async def act_4_forget_mode_erase_the_finding(call: Call, ids: Ids) -> None:
-    """Expect: ids m007-m009. Step 11: 0.40. Receipt: mode erase, m009 delta
-    0.40 -> 0.95. ``get h`` reports forgotten. Effective for i is 0.95, and its
-    provenance chain is empty. The step 14 table reads: f 0.95 / 0.40 / 0.40 /
-    tombstone; i 0.95 / 0.40 / 0.95 / erase."""
+    """
+    Expect: ids `m007`–`m009`. Step 11: 0.40. Receipt: mode erase, `tombstoned` empty,
+    `m009` delta **0.40 → 0.95** flagged `inflated`. `get h` reports forgotten.
+    Effective for `i` is **0.95**, and its provenance chain is empty. The step 14
+    table reads: `f` 0.95 / 0.40 / 0.40 / tombstone; `i` 0.95 / 0.40 / **0.95** /
+    erase.
+    """
     ids["g"] = await _write(call, "Runbook: p99 checkout SLO is 250 ms", 0.90)
     ids["h"] = await _write(
         call, "Customer chat paraphrase: the SLO is about 400 ms", 0.40, [ids["g"]]
@@ -225,7 +242,11 @@ async def act_4_forget_mode_erase_the_finding(call: Call, ids: Ids) -> None:
 
 
 async def act_5_forget_mode_cascade(call: Call, ids: Ids) -> None:
-    """Expect: both m011 and m012 forgotten; ``get l`` reports forgotten; j survives."""
+    """
+    Expect: ids `m010`–`m012`. Both `m011` and `m012` under `forgotten`, and no deltas
+    — cascade forgot the descendant rather than re-bounding it. `get l` reports
+    forgotten; `j` survives.
+    """
     ids["j"] = await _write(call, "Runbook: rollout window is Tuesday", 0.90)
     ids["k"] = await _write(
         call, "Chat paraphrase: maybe Wednesday", 0.40, [ids["j"]]
@@ -250,7 +271,11 @@ async def act_5_forget_mode_cascade(call: Call, ids: Ids) -> None:
 
 
 async def act_6_a_mistyped_source_is_rejected(call: Call, raw: Call) -> None:
-    """Expect: error code unresolved_source; the two lists are identical."""
+    """
+    Expect: the error reads `unresolved_source: source 'm999' does not resolve in
+    scope 'demo'`; the two lists are identical. The code before the colon is what a
+    client branches on.
+    """
     before = await call("memory_list_scope", scope=DEMO)
     assert before["ids"], "the act compares two non-empty listings"
 
@@ -270,7 +295,13 @@ async def act_6_a_mistyped_source_is_rejected(call: Call, raw: Call) -> None:
 
 
 async def act_7_another_scope_cannot_see_it(call: Call, ids: Ids) -> None:
-    """Expect: both results are not_found, with nothing to tell them apart."""
+    """
+    Expect: id `m013` for the write. Both reads from `ops` return exactly `{"outcome":
+    "not_found", "record": null}` — nothing tells apart a record that is there and
+    hidden from one that never existed. **This act needs an unbound server.** If yours
+    was started with `--scope` or `AMR_MCP_SCOPE`, the write to `hr` is refused with
+    the `scope:` code instead, which is the binding working; skip the act.
+    """
     ids["hr"] = str(
         (
             await call(
@@ -293,7 +324,54 @@ async def act_7_another_scope_cannot_see_it(call: Call, ids: Ids) -> None:
     assert (await call("memory_get", memory_id=ids["hr"], scope="hr"))["outcome"] == "ok"
 
 
+#: The acts in the document's order. Each one's docstring is its "Expect" paragraph from
+#: ``docs/try-it-with-claude.md``, copied rather than paraphrased, so that the test below
+#: can hold the two to each other.
+ACTS = (
+    act_0_what_the_system_declares,
+    act_1_confidence_cannot_outscore_its_weakest_source,
+    act_2_revise_a_source_and_everything_below_it_moves,
+    act_3_forget_mode_tombstone,
+    act_4_forget_mode_erase_the_finding,
+    act_5_forget_mode_cascade,
+    act_6_a_mistyped_source_is_rejected,
+    act_7_another_scope_cannot_see_it,
+)
+
+
+def _collapsed(text: str) -> str:
+    """Whitespace is where a document and a docstring are allowed to differ."""
+    return " ".join(text.split())
+
+
 # -------------------------------------------------------------------------- the tests
+
+
+def test_every_expectation_in_the_document_is_the_one_asserted_here() -> None:
+    """The acts below assert values; this asserts they are the document's values.
+
+    Without it the two can drift in the direction that matters: the server keeps doing
+    what the acts assert while the document goes on promising a stranger something else,
+    and every test in this file stays green. So each act's docstring has to appear in
+    ``docs/try-it-with-claude.md`` verbatim, up to line wrapping, and the document must
+    not have an expectation no act covers.
+    """
+    document = DOCUMENT.read_text(encoding="utf-8")
+    collapsed = _collapsed(document)
+
+    missing = [
+        act.__name__ for act in ACTS if _collapsed(act.__doc__ or "") not in collapsed
+    ]
+    assert missing == [], (
+        f"{missing} assert expectations the document does not state in those words. "
+        "Correct whichever of the two is wrong — if it is the server that moved, the "
+        "document is the thing to fix (section 6)."
+    )
+
+    stated = [line for line in document.splitlines() if line.startswith("Expect:")]
+    assert len(stated) == len(ACTS), (
+        f"the document states {len(stated)} expectations and this file covers {len(ACTS)}"
+    )
 
 
 def test_the_scripted_acts_hold_against_a_real_server(tmp_path: Path) -> None:
