@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable, Mapping, Protocol, runtime_checkable
+from typing import ClassVar, Iterable, Mapping, Protocol, runtime_checkable
 
 MemoryId = str
 Scope = str
@@ -55,11 +55,27 @@ class UnresolvedSourceError(Exception):
     """
 
 
+class NotFoundError(LookupError):
+    """Raised when no record with that id is visible to the calling scope. SPEC.md 3.1.
+
+    The `NotFound` signal of the error table, under a name. One answer covers both "no
+    such id" and "another scope's id": distinguishing them is an existence oracle, which
+    is the side channel SPEC.md 7 exists to rule out. ``get`` reports this state as
+    ``ReadOutcome.NOT_FOUND`` rather than raising; every other operation taking an id
+    fails with this.
+
+    A subclass of ``LookupError`` because that is what the suite, the MCP server's error
+    mapping, and three releases of adapter documentation already catch. An adapter that
+    raises a bare ``LookupError`` still conforms; the named type is what lets a caller
+    say which lookup failed.
+    """
+
+
 class ScopeError(Exception):
     """Raised when a *visible* record is mutated by a scope that does not own it.
 
     Deliberately narrow. An operation on a record the calling scope cannot see raises
-    ``LookupError``, exactly as an id that never existed would, because anything else is
+    ``NotFoundError``, exactly as an id that never existed would, because anything else is
     an existence oracle (SPEC.md I4.1, 3.1). This error is only reachable when the
     caller can already read the record through a grant, so it leaks nothing: a read
     grant conveys reading, not ``revise`` and not ``forget``.
@@ -187,19 +203,87 @@ class Capabilities:
 
     The declaration is what lets the suite report DIVERGENCE rather than FAIL for
     behavior the specification deliberately leaves open.
+
+    Every field SPEC.md 8 names is required, with no default: "an omitted field is not a
+    default: a checker that cannot read a field MUST report the declaration as invalid
+    rather than assume a value for it." A default here would be exactly that assumption,
+    made one layer lower where nobody can see it — an adapter that forgot to say what it
+    does about ``min(∅)`` would be measured against 1.0 and told it passed. Omission is a
+    ``TypeError`` at construction instead.
+
+    ``notes`` is the one optional field, because SPEC.md 8 does not name it: it is free
+    text, carried into ``raw.json`` and the MCP declaration for a reader, and nothing
+    computes anything from it. See design-notes/spec-feedback.md entry 35.
     """
 
     system: str
     version: str
     supported_forget_modes: frozenset[ForgetMode]
     default_forget_mode: ForgetMode
-    empty_chain_convention: float = 1.0
-    revision: str = "logged"
-    revision_raise_supported: bool = True
-    scopes: str = "native"
-    cross_scope_derivation: str = "opaque-ancestor"
-    durability: str = "in-memory"
+    empty_chain_convention: float
+    revision: str
+    revision_raise_supported: bool
+    scopes: str
+    cross_scope_derivation: str
+    durability: str
     notes: tuple[str, ...] = field(default_factory=tuple)
+
+    #: Every key SPEC.md 8 names, in the order the section prints them.
+    SPEC_FIELDS: ClassVar[tuple[str, ...]] = (
+        "system",
+        "version",
+        "supported_forget_modes",
+        "default_forget_mode",
+        "empty_chain_convention",
+        "revision",
+        "revision_raise_supported",
+        "scopes",
+        "cross_scope_derivation",
+        "durability",
+    )
+
+    #: Declarable but not normative; see the class docstring.
+    OPTIONAL_FIELDS: ClassVar[tuple[str, ...]] = ("notes",)
+
+    @classmethod
+    def from_dict(cls, mapping: Mapping[str, object]) -> Capabilities:
+        """A declaration read from JSON, with every SPEC.md 8 key required.
+
+        The inverse of ``amr.results.capabilities_as_dict``, and the reader a checker
+        that is handed somebody's published declaration needs. It refuses rather than
+        repairs: a missing key and an unknown key are both errors naming the field, so a
+        typo in a published declaration cannot quietly become a default.
+        """
+        missing = [name for name in cls.SPEC_FIELDS if name not in mapping]
+        if missing:
+            raise ValueError(
+                "a capability declaration states every field of SPEC.md 8; missing "
+                + ", ".join(missing)
+            )
+        known = set(cls.SPEC_FIELDS) | set(cls.OPTIONAL_FIELDS)
+        unknown = sorted(set(mapping) - known)
+        if unknown:
+            raise ValueError(
+                "unknown field in a capability declaration: "
+                + ", ".join(unknown)
+                + f"; SPEC.md 8 names {', '.join(cls.SPEC_FIELDS)}"
+            )
+        return cls(
+            system=str(mapping["system"]),
+            version=str(mapping["version"]),
+            supported_forget_modes=frozenset(
+                ForgetMode(mode)
+                for mode in mapping["supported_forget_modes"]  # type: ignore[union-attr]
+            ),
+            default_forget_mode=ForgetMode(mapping["default_forget_mode"]),
+            empty_chain_convention=float(mapping["empty_chain_convention"]),  # type: ignore[arg-type]
+            revision=str(mapping["revision"]),
+            revision_raise_supported=bool(mapping["revision_raise_supported"]),
+            scopes=str(mapping["scopes"]),
+            cross_scope_derivation=str(mapping["cross_scope_derivation"]),
+            durability=str(mapping["durability"]),
+            notes=tuple(str(note) for note in mapping.get("notes", ())),  # type: ignore[union-attr]
+        )
 
 
 @runtime_checkable

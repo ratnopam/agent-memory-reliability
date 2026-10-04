@@ -19,6 +19,7 @@ from amr.protocol import (
     Capabilities,
     ForgetMode,
     MemorySystem,
+    NotFoundError,
     ReadOutcome,
     ScopeError,
     effective_confidence_reference,
@@ -244,3 +245,31 @@ def test_p4_6_grant_conveys_reading_only(
     assert owner_view.record is not None
     assert owner_view.record.declared_confidence == 0.9, "the revise did not land"
     assert system.revisions(shared, ALPHA) == ()
+
+
+@pytest.mark.extra("not-found-is-a-named-type")
+def test_not_found_is_raised_as_a_named_type(any_system: MemorySystem) -> None:
+    """SPEC.md 3.1's `NotFound` signal has a type a caller can catch by name.
+
+    Mode-independent: nothing here is forgotten. The record is invisible to the calling
+    scope, which §3.1 requires to be indistinguishable from an id that never existed, so
+    both probes have to raise the same named type.
+
+    ``NotFoundError`` subclasses ``LookupError``, which is what the suite's own helpers,
+    the MCP server's error map, and an adapter written before the type existed all catch.
+    Asserting the subclass relationship here is what keeps that compatibility a property
+    of the code rather than a comment.
+    """
+    private = any_system.write("alpha's business", 0.9, scope=ALPHA)
+
+    for memory_id in (private, "no-such-id"):
+        with pytest.raises(NotFoundError) as raised:
+            any_system.revise(memory_id, 0.1, "probe", scope=BETA)
+        assert isinstance(raised.value, LookupError)
+        with pytest.raises(NotFoundError):
+            any_system.forget(memory_id, scope=BETA)
+
+    assert any_system.get(private, BETA).outcome is ReadOutcome.NOT_FOUND, (
+        "get reports the outcome rather than raising (SPEC.md 3.1)"
+    )
+    assert any_system.get(private, ALPHA).outcome is ReadOutcome.OK, "nothing applied"

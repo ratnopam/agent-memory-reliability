@@ -156,3 +156,43 @@ def test_forget_without_descendants_is_mode_independent(
 
     distinct = set(observations.values())
     assert len(distinct) == 1, f"modes disagreed with no descendants: {observations}"
+
+
+#: A scope that is not the default, so "its own scope" is a claim and not a tautology.
+OWNER = "owner-scope"
+
+
+@pytest.mark.extra("forget-removes-from-its-own-scope")
+def test_forget_removes_the_record_from_its_own_scope_under_every_mode(
+    make_any_system,
+) -> None:
+    """I3.2: `x` does not appear in `list_scope`, under each declared mode.
+
+    P3.1 asserts this for the record it forgot, in the default scope, under whichever
+    mode the cell is configured with. I3.2 is stated independently of mode, and the
+    scope it is about is the record's own: a tombstone that stayed listed would be
+    visible to its owner as a live record with no content, which is the one reading
+    SPEC.md 6.2 rules out. So this walks every mode the system declares and asks the
+    owning scope, which is the only scope that could ever have listed the record.
+
+    A mid-chain record, because under ``cascade`` the descendant leaves the listing too
+    and under ``tombstone`` and ``erase`` it must not.
+    """
+    declared = make_any_system().capabilities().supported_forget_modes
+    assert declared, "a system declares at least one forget mode (SPEC.md 8)"
+
+    for mode in (mode for mode in ForgetMode if mode in declared):
+        system = make_any_system(mode)
+        root = system.write("root", 0.4, scope=OWNER)
+        leaf = system.write("leaf", 0.9, sources=[root], scope=OWNER)
+        assert {root, leaf} <= set(system.list_scope(OWNER))
+
+        receipt = system.forget(root, scope=OWNER, mode=mode)
+
+        listed = system.list_scope(OWNER)
+        assert root not in listed, f"I3.2: {mode.value} left the forgotten id listed"
+        assert system.get(root, OWNER).outcome is ReadOutcome.FORGOTTEN, "I3.1"
+        assert (leaf in listed) == (leaf not in receipt.forgotten), (
+            f"under {mode.value} the listing and the receipt disagree about the "
+            f"descendant: listed={leaf in listed}, receipt={sorted(receipt.forgotten)}"
+        )

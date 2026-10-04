@@ -11,6 +11,9 @@ the suite reports DIVERGENCE rather than FAIL. One configuration flag, two outco
 
 from __future__ import annotations
 
+import random
+from typing import Sequence
+
 import pytest
 
 from amr.outcomes import erasure_inflation_is_declared
@@ -251,3 +254,94 @@ def test_effective_confidence_is_insertion_order_independent(
 
     assert forward.effective_confidence(sink_a) == reversed_.effective_confidence(sink_b)
     assert forward.effective_confidence(left_a) == reversed_.effective_confidence(left_b)
+
+
+@pytest.mark.extra("topological-order-independence")
+def test_effective_confidence_is_topological_order_independent(make_any_system) -> None:
+    """I2.4: ten random DAGs, each written in two valid topological orders, agree.
+
+    I2.4 says "same graph, same values, independent of insertion or traversal order",
+    and the check above it tests one diamond in two orders. That shape has exactly two
+    valid orders and three edges; a store whose arithmetic depended on insertion order
+    in a way a diamond cannot show would pass it.
+
+    Store-assigned ids differ between the two runs, so the comparison is keyed by
+    content label, which is the only thing the two graphs share. Both orders are
+    asserted to be topological before anything is compared: an order that was not would
+    be rejected by strict writes (I1.6) rather than measuring anything.
+    """
+    dags = random_dags(count=10)
+    assert len(dags) == 10
+    rng = random.Random(ORDER_SEED)
+    reordered_at_least_once = False
+
+    for dag in dags:
+        natural = tuple(range(len(dag)))
+        shuffled = _topological_order(dag, rng)
+        for order in (natural, shuffled):
+            assert _is_topological(dag, order), f"{order} is not a write order for {dag}"
+        reordered_at_least_once |= shuffled != natural
+
+        first = _effective_by_label(make_any_system(), dag, natural)
+        second = _effective_by_label(make_any_system(), dag, shuffled)
+        assert first == second, (
+            "effective confidence depends on the order the graph was written in: "
+            f"{first} vs {second}"
+        )
+
+    assert reordered_at_least_once, (
+        "every generated order matched the natural one; the check compared a graph "
+        "with itself ten times"
+    )
+
+
+#: Fixed, like DAG_SEED: the second write order is data, not chance, so a failure is
+#: reproducible from this file alone and ``make determinism`` stays meaningful.
+ORDER_SEED = 20261104
+
+
+def _topological_order(
+    dag: Sequence[tuple[float, Sequence[int]]], rng: random.Random
+) -> tuple[int, ...]:
+    """A valid write order, chosen with random tie-breaking among the ready nodes."""
+    pending = {index: set(parents) for index, (_, parents) in enumerate(dag)}
+    order: list[int] = []
+    while pending:
+        ready = sorted(index for index, parents in pending.items() if not parents)
+        chosen = rng.choice(ready)
+        del pending[chosen]
+        order.append(chosen)
+        for parents in pending.values():
+            parents.discard(chosen)
+    return tuple(order)
+
+
+def _is_topological(
+    dag: Sequence[tuple[float, Sequence[int]]], order: Sequence[int]
+) -> bool:
+    position = {index: place for place, index in enumerate(order)}
+    return sorted(position) == list(range(len(dag))) and all(
+        position[parent] < position[index]
+        for index, (_, parents) in enumerate(dag)
+        for parent in parents
+    )
+
+
+def _effective_by_label(
+    system: MemorySystem,
+    dag: Sequence[tuple[float, Sequence[int]]],
+    order: Sequence[int],
+) -> dict[str, float]:
+    """Write ``dag`` in ``order``, and report the numbers keyed by content label."""
+    ids: dict[int, str] = {}
+    for index in order:
+        declared, parents = dag[index]
+        ids[index] = system.write(
+            content=f"node-{index}",
+            declared_confidence=declared,
+            sources=[ids[parent] for parent in parents],
+        )
+    return {
+        f"node-{index}": system.effective_confidence(memory_id)
+        for index, memory_id in sorted(ids.items())
+    }

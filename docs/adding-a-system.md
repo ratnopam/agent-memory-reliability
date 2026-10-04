@@ -28,8 +28,8 @@ existed*. Collapsing the two is the single most common way to fail P3.1.
 **`provenance(id, scope) -> ancestor subgraph`** — the transitive ancestor closure, each
 ancestor once, every id it names resolvable inside the subgraph it returns. A tombstoned
 ancestor appears marked; an ancestor in another scope appears with its confidence and
-without its content. Raises `NotFound` for an invisible id and `ForgottenRecordError` for a
-record that was removed rather than tombstoned.
+without its content. Raises `NotFoundError` for an invisible id and `ForgottenRecordError`
+for a record that was removed rather than tombstoned.
 
 **`effective_confidence(id, scope) -> float`** — `min(declared, min over ancestors)`, with
 your declared convention for the empty chain. Same errors as `provenance`. The scope decides
@@ -41,16 +41,17 @@ transitively, filtered to what the scope can see. Same errors as `provenance`.
 **`revise(id, scope, new_declared, reason) -> receipt`** — changes the declared confidence
 and nothing else. Lowering propagates; raising does not lift a descendant past its own
 declared value. Raises `ForgottenRecordError` for a forgotten target, `ScopeError` when the
-caller can see the record through a grant but does not own it, and `NotFound` otherwise.
+caller can see the record through a grant but does not own it, and `NotFoundError`
+otherwise.
 
 **`revisions(id, scope) -> ordered receipts`** — the history, oldest first, carrying the
-before value, the after value, and the reason. Raises `NotFound` and
+before value, the after value, and the reason. Raises `NotFoundError` and
 `ForgottenRecordError` like the walk.
 
 **`forget(id, scope, mode) -> receipt`** — applies one of the modes you declare. It is
 idempotent: a second call succeeds, changes nothing, and names nothing. The receipt carries
 the mode, every affected id, the confidence delta for every surviving descendant, and the
-scope of each affected id. Raises `ScopeError` and `NotFound` like `revise`.
+scope of each affected id. Raises `ScopeError` and `NotFoundError` like `revise`.
 
 **`list_scope(scope) -> set of id`** — the records native to that scope, forgotten ones
 excluded. A record readable through a grant is *not* listed: `list_scope` is not a
@@ -61,6 +62,32 @@ table. A grant conveys reading only. `grants(owner)` returns the reader scopes, 
 the observable a revocation has to change.
 
 **`capabilities()`** — the declaration below.
+
+### The errors, by name
+
+[SPEC.md §3.1](../version2/SPEC.md) names the signals; these are the types `amr.protocol`
+exports for them, and what the suite catches. An adapter may subclass them or raise its
+own, as long as the name it raises is catchable as the one in the right-hand column.
+
+| Signal (§3.1) | Type | Raised when |
+| --- | --- | --- |
+| `UnresolvedSource` | `UnresolvedSourceError` | A write cites an id that does not resolve for the writing scope. Nothing is persisted. |
+| `Cycle` | `CycleError` | An edge would make a record its own ancestor. Reachable only where ids are caller-supplied — a write, or a snapshot being opened. |
+| `ForgottenRecord` | `ForgottenRecordError` | The target of a mutation, or an id cited by a write, belongs to a forgotten record — a tombstone included. |
+| `NotFound` | `NotFoundError` (a `LookupError`) | No record with that id is visible to the calling scope. One answer for "no such id" and for "another scope's id": telling them apart is an existence oracle (§7). `get` reports this as its `NOT_FOUND` outcome and does not raise. |
+| `Scope` | `ScopeError` | The caller can *read* the record through a grant but may not do what it asked — mutate a record it does not own. Distinct from `NotFoundError`, which says nothing about whether the record exists. |
+
+`NotFoundError` subclasses `LookupError`, so an adapter that raises the bare built-in still
+conforms. The named type is what lets a caller say *which* lookup failed.
+
+One case has no §3.1 signal: a snapshot that opens with a *dangling* edge — a live record
+citing an id the snapshot does not contain. The reference raises its own
+`StoreIntegrityError` there, outside the §3.1 vocabulary, and `CycleError` for a cyclic
+snapshot. Both are rejections of a corrupt snapshot; the suite only requires that opening
+one fails rather than silently truncating the chain (P1.7). If you implement `Reopenable`,
+raise whatever your store raises for corruption; see
+[design-notes/spec-feedback.md](../design-notes/spec-feedback.md) entry 36 for the
+proposed §3.1 text that would name it.
 
 ## 2. What you declare, and what it costs
 

@@ -158,7 +158,7 @@ class ExampleAdapter:
     def _resolve(self, memory_id: MemoryId, scope: Scope, owner_only: bool = False) -> Row:
         """SPEC.md 3.1, in order: absent first, and only then not-yours (see README.md)."""
         if not self._visible(memory_id, scope):
-            raise LookupError(f"{memory_id!r} does not resolve")
+            raise protocol.NotFoundError(f"{memory_id!r} does not resolve")
         row = self._rows[memory_id]
         if owner_only and row.scope != scope:
             raise protocol.ScopeError(f"{memory_id!r} is native to another scope")

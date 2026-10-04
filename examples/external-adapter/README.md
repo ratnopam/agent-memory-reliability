@@ -28,7 +28,7 @@ Everything else in [adapter.py](src/amr_adapter_example/adapter.py) is bookkeepi
 dict. These two are where a real store gets it wrong.
 
 **`_resolve`** fixes the order of the rejections [SPEC.md §3.1](../../version2/SPEC.md)
-requires: absent first, as `LookupError`, and only then not-yours, as `ScopeError`. The
+requires: absent first, as `NotFoundError`, and only then not-yours, as `ScopeError`. The
 other order is an existence oracle — a reader who cannot see a record learns it exists by
 being told they are not allowed to touch it — and P4.1 catches it. So "absent" here covers
 both *no such id* and *another scope's id, which you are not entitled to know about*.

@@ -17,7 +17,7 @@ Authorisation happens before either function here is called; see ``ReferenceSyst
 
 from __future__ import annotations
 
-from amr.protocol import ForgetMode, ForgetReceipt, MemoryId, Scope
+from amr.protocol import ForgetMode, ForgetReceipt, MemoryId, NotFoundError, Scope
 from systems.reference.confidence import ConfidenceIndex
 from systems.reference.store import Store, StoredRecord
 
@@ -74,5 +74,5 @@ def already_forgotten(state: tuple[ForgetMode, Scope] | None) -> ForgetReceipt:
     ``forget(x, cascade)`` would destroy descendants the first call spared.
     """
     if state is None:  # pragma: no cover - the caller resolves the id first
-        raise LookupError("record does not resolve")
+        raise NotFoundError("record does not resolve")
     return ForgetReceipt(mode=state[0], forgotten=frozenset())

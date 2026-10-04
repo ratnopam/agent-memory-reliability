@@ -23,6 +23,7 @@ from amr.protocol import (
     ForgottenRecordError,
     GrantReceipt,
     MemoryId,
+    NotFoundError,
     Origin,
     ReadOutcome,
     ReadResult,
@@ -53,7 +54,7 @@ NOTES = (
     ),
     (
         "revise and forget require ownership. A record the caller cannot see raises "
-        "LookupError, exactly as an unassigned id would."
+        "NotFoundError, exactly as an unassigned id would."
     ),
 )
 
@@ -253,7 +254,7 @@ class ReferenceSystem:
     ) -> StoredRecord | None:
         """The record if this caller may see it; ``None`` if it is gone and they may know.
 
-        Rejections in the order SPEC.md 3.1 fixes. Absent first, as ``LookupError``, and
+        Rejections in the order SPEC.md 3.1 fixes. Absent first, as ``NotFoundError``, and
         that one answer covers both "no such id" and "another scope's id" — distinguishing
         them is an existence oracle. Then not-yours, as ``ScopeError``, reachable only
         once the caller can already read the record.
@@ -268,7 +269,7 @@ class ReferenceSystem:
         elif self._store.visible_forgotten(memory_id, scope):
             owner = self._store.forget_state(memory_id)[1]  # type: ignore[index]
         else:
-            raise LookupError(f"{memory_id!r} does not resolve")
+            raise NotFoundError(f"{memory_id!r} does not resolve")
         if owner_only and owner != scope:
             raise ScopeError(f"{memory_id!r} is native to another scope")
         return record
