@@ -12,9 +12,18 @@ sees its own writes and nothing survives a restart. ``AMR_FORGET_MODE`` sets the
 forget mode (``tombstone``, ``cascade``, or ``erase``); ``memory_forget`` can override it
 per call. ``memory_capabilities`` reports what is in force.
 
+**Who the caller is.** By default, nobody: ``scope`` is an ordinary tool argument and the
+server believes it. One process, one store, and a client that may name any scope it likes,
+which means scope here is a *namespace* and not a boundary — SPEC.md 7's isolation is a
+property of the system under test, and this server does not add an identity to it. Start
+it with ``--scope NAME`` (or ``AMR_MCP_SCOPE``) to bind the connection to one scope: the
+argument then defaults to that scope and a call naming a different one is refused with
+``scope:``. That is the whole of the trust model; mcp/README.md says it in prose.
+
 Run it:
 
-    python mcp/server.py                      # stdio
+    python mcp/server.py                      # stdio, scope is the caller's to choose
+    python mcp/server.py --scope team-sre     # stdio, bound to one scope
     AMR_FORGET_MODE=erase python mcp/server.py
 
 This directory has no ``__init__.py`` on purpose: a package here named ``mcp`` would
@@ -47,10 +56,12 @@ from amr.protocol import (  # noqa: E402
     ForgetMode,
     ForgetReceipt,
     ForgottenRecordError,
+    NotFoundError,
     Origin,
     ReadResult,
     Record,
     RevisionReceipt,
+    Scope,
     ScopeError,
     UnresolvedSourceError,
 )
@@ -66,6 +77,9 @@ number will be too high.
 
 A write whose sources do not all resolve is rejected outright, so write ancestors first.
 Forgetting has a declared consequence for descendants -- see memory_capabilities.
+
+scope names a namespace, not an identity: this server does not authenticate you. If it was
+started bound to one scope, omit the argument -- naming another scope is refused.
 """
 
 #: Protocol errors, mapped to the code a tool error is prefixed with. The prefix is part
@@ -75,6 +89,9 @@ ERROR_CODES: tuple[tuple[type[Exception], str], ...] = (
     (UnresolvedSourceError, "unresolved_source"),
     (ForgottenRecordError, "forgotten"),
     (ScopeError, "scope"),
+    # ``NotFoundError`` is a ``LookupError``; both entries map to one code, because an
+    # adapter that raises the bare built-in still conforms (SPEC.md 3.1).
+    (NotFoundError, "not_found"),
     (LookupError, "not_found"),
     (ValueError, "invalid_argument"),
 )
@@ -104,6 +121,21 @@ def _forget_mode(name: str | None) -> ForgetMode | None:
 
 def _default_mode() -> ForgetMode:
     return _forget_mode(os.environ.get("AMR_FORGET_MODE")) or ForgetMode.TOMBSTONE
+
+
+def _bound_scope(argv: list[str] | None = None) -> str | None:
+    """``--scope NAME``, else ``AMR_MCP_SCOPE``, else unbound. See the module docstring."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--scope" in arguments:
+        index = arguments.index("--scope")
+        if index + 1 >= len(arguments):
+            raise SystemExit("--scope takes a scope name")
+        return arguments[index + 1]
+    for argument in arguments:
+        if argument.startswith("--scope="):
+            return argument.partition("=")[2]
+    bound = os.environ.get("AMR_MCP_SCOPE", "").strip()
+    return bound or None
 
 
 # ------------------------------------------------------------------ translation
@@ -215,15 +247,39 @@ def _translated(call):
 # ----------------------------------------------------------------------- server
 
 
-def build_server(system: ReferenceSystem | None = None) -> MCPServer:
+def build_server(
+    system: ReferenceSystem | None = None, bound_scope: str | None = None
+) -> MCPServer:
     """The nine record operations of SPEC.md 3 as tools, plus ``memory_capabilities``.
 
     Not the other three. ``grant``, ``revoke``, and ``grants`` administer who may read
     across a scope boundary, and a client that can widen its own visibility is not
     isolated by anything (SPEC.md 7). Grants are configuration, set by whoever runs the
     server; there is no tool for them on purpose.
+
+    ``bound_scope`` fixes the caller's scope for the connection. Unbound — the default —
+    ``scope`` is an argument like any other and the server believes whatever it is told.
     """
     memory = system or ReferenceSystem(default_forget_mode=_default_mode())
+
+    def scoped(requested: str | None) -> Scope:
+        """Which scope this call acts in, given what the caller asked for.
+
+        Unbound, the caller decides and omitting the argument means ``default``. Bound,
+        omitting it means the bound scope and naming a different one is refused rather
+        than silently redirected: a client that believes it wrote to ``alpha`` and was
+        quietly given ``beta`` has been lied to about where its memory is. The refusal
+        carries the bound name, because this is a configuration mismatch — the scope of a
+        connection is not a secret from the client connected to it.
+        """
+        if bound_scope is None:
+            return requested if requested is not None else DEFAULT_SCOPE
+        if requested is not None and requested != bound_scope:
+            raise ToolError(
+                f"scope: this server is bound to scope {bound_scope!r} and cannot act "
+                f"in {requested!r}; omit the argument or pass {bound_scope!r}"
+            )
+        return bound_scope
     server = MCPServer(
         name="agent-memory-reliability",
         version=memory.capabilities().version,
@@ -240,10 +296,11 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
         content: str,
         declared_confidence: float,
         sources: list[str] | None = None,
-        scope: str = DEFAULT_SCOPE,
+        scope: str | None = None,
         origin_kind: str | None = None,
         origin_ref: str | None = None,
     ) -> dict[str, Any]:
+        scope = scoped(scope)
         if (origin_kind is None) != (origin_ref is None):
             raise ToolError(
                 "invalid_argument: origin_kind and origin_ref are given together or "
@@ -267,7 +324,8 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
             "not_found are different answers and are never collapsed."
         )
     )
-    def memory_get(memory_id: str, scope: str = DEFAULT_SCOPE) -> dict[str, Any]:
+    def memory_get(memory_id: str, scope: str | None = None) -> dict[str, Any]:
+        scope = scoped(scope)
         return _read_result(_translated(lambda: memory.get(memory_id, scope=scope)))
 
     @server.tool(
@@ -277,7 +335,8 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
             "id and declared confidence are visible, its content is not."
         )
     )
-    def memory_provenance(memory_id: str, scope: str = DEFAULT_SCOPE) -> dict[str, Any]:
+    def memory_provenance(memory_id: str, scope: str | None = None) -> dict[str, Any]:
+        scope = scoped(scope)
         return _chain(_translated(lambda: memory.provenance(memory_id, scope=scope)))
 
     @server.tool(
@@ -288,15 +347,17 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
         )
     )
     def memory_effective_confidence(
-        memory_id: str, scope: str = DEFAULT_SCOPE
+        memory_id: str, scope: str | None = None
     ) -> dict[str, Any]:
+        scope = scoped(scope)
         value = _translated(
             lambda: memory.effective_confidence(memory_id, scope=scope)
         )
         return {"id": memory_id, "effective_confidence": value}
 
     @server.tool(description="Every memory derived from this one, transitively.")
-    def memory_descendants(memory_id: str, scope: str = DEFAULT_SCOPE) -> dict[str, Any]:
+    def memory_descendants(memory_id: str, scope: str | None = None) -> dict[str, Any]:
+        scope = scoped(scope)
         found = _translated(lambda: memory.descendants(memory_id, scope=scope))
         return {"id": memory_id, "descendants": sorted(found)}
 
@@ -311,8 +372,9 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
         memory_id: str,
         declared_confidence: float,
         reason: str,
-        scope: str = DEFAULT_SCOPE,
+        scope: str | None = None,
     ) -> dict[str, Any]:
+        scope = scoped(scope)
         return _revision_receipt(
             _translated(
                 lambda: memory.revise(memory_id, declared_confidence, reason, scope=scope)
@@ -320,7 +382,8 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
         )
 
     @server.tool(description="The revision history of a memory, oldest first.")
-    def memory_revisions(memory_id: str, scope: str = DEFAULT_SCOPE) -> dict[str, Any]:
+    def memory_revisions(memory_id: str, scope: str | None = None) -> dict[str, Any]:
+        scope = scoped(scope)
         history = _translated(lambda: memory.revisions(memory_id, scope=scope))
         return {
             "id": memory_id,
@@ -337,8 +400,9 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
         )
     )
     def memory_forget(
-        memory_id: str, scope: str = DEFAULT_SCOPE, mode: str | None = None
+        memory_id: str, scope: str | None = None, mode: str | None = None
     ) -> dict[str, Any]:
+        scope = scoped(scope)
         chosen = _forget_mode(mode)
         return _forget_receipt(
             _translated(lambda: memory.forget(memory_id, scope=scope, mode=chosen))
@@ -350,7 +414,8 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
             "readable but is not listed here."
         )
     )
-    def memory_list_scope(scope: str = DEFAULT_SCOPE) -> dict[str, Any]:
+    def memory_list_scope(scope: str | None = None) -> dict[str, Any]:
+        scope = scoped(scope)
         return {
             "scope": scope,
             "ids": sorted(_translated(lambda: memory.list_scope(scope))),
@@ -369,7 +434,7 @@ def build_server(system: ReferenceSystem | None = None) -> MCPServer:
 
 
 def main() -> None:
-    build_server().run(transport="stdio")
+    build_server(bound_scope=_bound_scope()).run(transport="stdio")
 
 
 if __name__ == "__main__":

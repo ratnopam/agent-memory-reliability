@@ -53,16 +53,21 @@ def errored(result: Any) -> bool:
     return bool(_attribute(result, "is_error", "isError", default=False))
 
 
-def run_session(script: Callable[[Call, Call], Awaitable[Any]]) -> Any:
+def run_session(
+    script: Callable[[Call, Call], Awaitable[Any]], *arguments: str
+) -> Any:
     """Start the server over stdio, run ``script`` against one session, shut it down.
 
     ``script`` is given two helpers: ``call`` returns the decoded payload and fails on a
     tool error, ``raw`` returns the result untouched so a test can assert on an error.
+    Extra ``arguments`` go to the server process, which is how a bound scope is set.
     """
 
     async def run() -> Any:
         parameters = mcp.StdioServerParameters(
-            command=sys.executable, args=[str(SERVER)], cwd=str(ROOT)
+            command=sys.executable,
+            args=[str(SERVER), *arguments],
+            cwd=str(ROOT),
         )
         async with mcp.Client(parameters) as client:
 
@@ -185,6 +190,49 @@ def test_forget_receipt_reports_what_it_affected() -> None:
         assert (await call("memory_get", memory_id="never-existed"))["outcome"] == "not_found"
 
     run_session(script)
+
+
+def test_a_bound_server_refuses_another_scope() -> None:
+    """``--scope`` fixes the caller's scope for the connection. See mcp/README.md.
+
+    Unbound, ``scope`` is an argument the server believes, which is the default and is
+    stated as the trust model rather than defended. Bound, two things have to hold: a call
+    that omits the argument acts in the bound scope, and a call that names a different one
+    is refused with the ``scope:`` code instead of being redirected. The refusal is the
+    half worth testing — silently writing to ``team-sre`` a record the client asked to put
+    in ``other-team`` would be the server deciding something, which is what it does not do.
+    """
+
+    async def script(call: Call, raw: Call) -> None:
+        written = (
+            await call(
+                "memory_write", content="a bound write", declared_confidence=0.9
+            )
+        )["id"]
+        listed = await call("memory_list_scope")
+        assert listed["scope"] == "team-sre", "omitting scope means the bound scope"
+        assert listed["ids"] == [written]
+
+        result = await raw("memory_list_scope", scope="other-team")
+        assert errored(result), "a bound server must refuse another scope"
+        assert "scope:" in text_of(result), text_of(result)
+        assert "team-sre" in text_of(result), "the refusal names the bound scope"
+
+        result = await raw(
+            "memory_write",
+            content="a write aimed elsewhere",
+            declared_confidence=0.9,
+            scope="other-team",
+        )
+        assert errored(result), "the refusal is not read-only"
+        assert (await call("memory_list_scope"))["ids"] == [written], "nothing was written"
+
+        # Naming the bound scope explicitly is the same call as omitting it.
+        assert (await call("memory_get", memory_id=written, scope="team-sre"))[
+            "outcome"
+        ] == "ok"
+
+    run_session(script, "--scope", "team-sre")
 
 
 def test_capabilities_are_reported() -> None:

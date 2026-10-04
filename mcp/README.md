@@ -15,7 +15,9 @@ python mcp/server.py
 
 `AMR_FORGET_MODE` sets the default forget mode (`tombstone`, the default; `cascade`;
 `erase`). `memory_forget` can override it per call, and `memory_capabilities` reports
-what is in force.
+what is in force. `--scope NAME` (or `AMR_MCP_SCOPE`) binds the connection to one scope;
+see [Scope: what this server trusts](#scope-what-this-server-trusts) for what that is and
+is not worth.
 
 As a client entry — for Claude Desktop, Claude Code, or anything else that speaks MCP:
 
@@ -54,11 +56,38 @@ shadow the installed one.
 | `memory_list_scope` | Memories native to a scope. A memory shared from elsewhere is readable but not listed. |
 | `memory_capabilities` | The declaration of `version2/SPEC.md` §8. |
 
-Every tool takes `scope`, defaulting to `default`.
-
 The other three operations of §3 — `grant`, `revoke`, `grants` — are deliberately not
 tools. A client that can widen its own visibility is not isolated by anything. Grants are
 configuration, set by whoever runs the server.
+
+## Scope: what this server trusts
+
+**By default, the caller's scope is whatever the caller says it is.** Every tool takes an
+optional `scope`; omitting it means `default`. The server does not authenticate anyone, has
+no notion of a session identity, and cannot tell two clients apart — there is one process
+and one store. So scope here is a **namespace, not a boundary**: a client that names
+`team-sre` acts as `team-sre`.
+
+That is not a hole in SPEC.md §7. Isolation is a property of the *system under test*, and
+the conformance suite checks it by calling the system directly with the scope it chooses to
+pass — the same way any library is called. A server in front of it can only be as trusted
+as the caller it cannot identify. Saying so is the point of this section: an isolation
+property is worth exactly as much as the identity it is enforced against, and here there
+is none.
+
+**If you need one scope per connection**, bind it:
+
+```
+python mcp/server.py --scope team-sre      # or AMR_MCP_SCOPE=team-sre
+```
+
+Bound, `scope` defaults to the bound name and a call naming a different scope is refused
+with the `scope:` code rather than redirected — a client told its write succeeded, in a
+scope it did not ask for, has been lied to about where its memory is. Naming the bound
+scope explicitly is the same call as omitting the argument. One process still means one
+store: binding gives a connection a fixed name, it does not make the store multi-tenant,
+and anyone who can start a second server can bind it to any scope they like. Grants across
+bound scopes remain configuration, and there is still no tool for them.
 
 ## Errors
 
@@ -85,6 +114,7 @@ make mcp-test
 ```
 
 Starts the server as a subprocess, talks to it over stdio with the official client, writes
-a derivation, and checks the arithmetic and the receipt. The conformance suite does not
+a derivation, and checks the arithmetic, the receipt, and that a server started with
+`--scope` refuses to act in another one. The conformance suite does not
 import `mcp`: `make test`, `make reproduce`, and `make determinism` pass without it
 installed.
