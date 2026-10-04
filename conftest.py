@@ -18,7 +18,7 @@ for path in (ROOT, os.path.join(ROOT, "src")):
 #: ``properties/test_external_adapter_example.py`` runs the whole suite in a subprocess to
 #: measure the example adapter. That subprocess sets ``AMR_NESTED_RUN``, and the file is not
 #: collected there, because a run that collects it starts another run, forever. Ignored
-#: rather than skipped: a skip is counted as a FAIL (properties/runner.py), and the inner
+#: rather than skipped: a skip is counted as a FAIL (src/amr/runner.py), and the inner
 #: run's own totals are what the outer test asserts on.
 collect_ignore = []
 if os.environ.get("AMR_NESTED_RUN"):

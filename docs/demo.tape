@@ -2,9 +2,10 @@
 #
 #   vhs docs/demo.tape
 #
-# The GIF is not committed. A recording nobody generated from this tape is a claim nobody
-# checked, and this file is the reproducible part. Run it from the repository root with the
-# package installed (`pip install -e ".[test]"`).
+# This file is the reproducible part; the GIF is not. The author renders it from this tape,
+# watches it, and commits it once it is worth showing — a recording nobody looked at is a
+# claim nobody checked, and no gate here can tell a good frame from a bad one. Run it from
+# the repository root with the package installed (`pip install -e ".[test]"`).
 #
 # Sized for a tablet standing on a table at a conference: 24pt type, dark background, no
 # window chrome, and nothing on screen that a reader has to squint at. The demo prints

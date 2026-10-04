@@ -101,12 +101,45 @@ system that does not implement it fails P1.5 rather than being excused from it
 **`ScopeError` survives, narrowed to one case.** Entry 6 makes an invisible record
 indistinguishable from a nonexistent one for every operation, which removes every scope
 error the suite could previously observe: an operation on a record the caller cannot see
-raises `LookupError`, exactly as an unassigned id would. The one case left is a caller that
-*can* read a record through a grant and tries to `revise` or `forget` it. Collapsing that
-into `LookupError` too would be wrong in the other direction — it would tell a caller the
-record it just read does not exist — and a read grant conveying write access would make
+raises `NotFoundError`, exactly as an unassigned id would. The one case left is a caller
+that *can* read a record through a grant and tries to `revise` or `forget` it. Collapsing
+that into `NotFoundError` too would be wrong in the other direction — it would tell a caller
+the record it just read does not exist — and a read grant conveying write access would make
 `revoke` unable to undo anything. It leaks nothing, because it is only reachable once the
 caller can already see the record. See spec-feedback entry 20 and SPEC.md 3.1.
+
+**`NotFound` is a type, and it is a `LookupError`.** For three phases the reference raised a
+bare `LookupError` for §3.1's `NotFound`, because the specification names that signal without
+naming a type and the built-in was the smallest thing that worked. It was never written down
+as a decision, which is how it survived: `amr.protocol` exported four error classes and the
+fifth signal was a built-in nobody had chosen. `NotFoundError(LookupError)` now exists and is
+raised by every mutation on an id the caller cannot see. Subclassing rather than replacing,
+because the suite, the MCP server's error map, and the adapter documentation all already
+caught `LookupError`, and an adapter that still raises the built-in conforms. `get` keeps
+reporting `ReadOutcome.NOT_FOUND` and does not raise — that asymmetry is in the specification,
+not in this code. See spec-feedback entry 34.
+
+**`StoreIntegrityError` stays inside the reference.** A snapshot that opens with a dangling
+edge — a live record citing an id the snapshot does not contain — has no §3.1 signal. The
+reference raises its own exception for it, validating dangling edges before cycles so that a
+snapshot with both faults names the missing id, which is the actionable one. The type is not
+promoted into `amr.protocol`: §3.1 says five signals are normative, and adding a sixth to the
+shared vocabulary ahead of the text would make this code the specification. P1.7 only requires
+that opening a corrupt snapshot *fail* — the alternative, opening it with the edge dropped, is
+`taxonomy/silent-chain-truncation.md` — so no matrix cell depends on which type comes out.
+See spec-feedback entry 36.
+
+**`Capabilities` has one optional field, and it is `notes`.** SPEC.md §8 requires every field
+to be stated explicitly and says an omitted field is not a default, so the six dataclass
+defaults that used to sit in `Capabilities` were the assumed values the section forbids, made
+where nobody would look for them; omitting any of the ten §8 fields is now a `TypeError`.
+`notes` is the exception and is kept: the reference's declaration is where "the `erase`
+divergence is deliberate" is said in a machine-readable file, and the alternative to a field
+§8 does not define is the same sentence in a commit message, which no result carries. The
+strict reading — delete it — was implemented and reverted when it turned out `notes` is read
+by `amr.results` as well as by the MCP server. `Capabilities.from_dict` is the reader for a
+published declaration and rejects a missing or unknown key by name, because a checker that
+tolerates an absent field is §8's failure one layer out. See spec-feedback entry 35.
 
 **Grants are not exposed as MCP tools.** A client that can widen its own visibility is not
 isolated by anything, so the server exposes the nine record operations and leaves grant
@@ -159,13 +192,67 @@ no `[tool.pytest.ini_options]`: markers are registered in `properties/conftest.p
 the fixtures that stamp them, and duplicating the list in a second file is how the two
 disagree.
 
-**The `amr` console script is the interface; the Makefile is a convenience over it.** Six
-subcommands (`test`, `reproduce`, `determinism`, `demo`, `contamination`, `matrix`), and
-`python -m amr` is the same thing. Nothing in this repository can only be done by GNU make.
+**The `amr` console script is the interface; the Makefile is a convenience over it.** Seven
+subcommands (`test`, `reproduce`, `determinism`, `demo`, `contamination`, `matrix`,
+`drift`), and `python -m amr` is the same thing. Nothing in this repository can only be done
+by GNU make — including the drift gate, which is a subcommand rather than a shell line in
+`release-check` so that a contributor can run it the same way CI does.
+
+**`make results` is the only target that writes the committed record.** `make contamination`
+and the two result-producing gates in `release-check` write into a temporary directory and
+print; `make results` is `reproduce` plus the simulation into `results/<today>/`, and it is
+the only thing that refreshes `docs/contamination.svg`. Running a check used to leave the
+tree dirty, and a checklist step that does that gets `git checkout`ed away by hand — after
+which the next thing discarded by hand is something that mattered.
+
+**The diagram's facts are gated; its picture is not.** `docs/architecture.svg` was the only
+document in the repository that nothing read, and it named a `scope.py` that this tree has
+never contained — folded into `store.py` in Phase 2 and still on the diagram three phases
+later. `.github/check_diagram.py` is the eleventh gate in `release-check`: every `*.py` the
+diagram names has to exist in `git ls-files` by basename, its "N numbered checks" has to equal
+what `properties/test_spec_coverage.py` parses out of the specification, and the count it
+spells in "N operations" has to equal what `MemorySystem` declares. Both counts are checked in
+both directions, and a *missing* phrase is a failure too: a gate whose subject can be deleted
+is a gate that can be switched off by deleting its subject. Matched by basename because
+the diagram writes `amr/protocol.py` where the tree writes `src/amr/protocol.py`, and a
+drawing is not the place to track a directory layout. Layout, colour, and whether the arrows
+point at the right boxes are not checked, and `docs/architecture.png` is not re-exported by
+anything — a gate over an image's meaning is not available from text.
+
+**Two size targets were missed, and the numbers are reported rather than met.**
+`systems/reference/` is 799 lines against a ≤600 target (518 of them code) and
+`scenarios/contamination/run.py` is 403 against a 200–300 one (253 code, inside the range).
+Both overruns are docstrings and the constant tables that are the whole input to the
+simulation, and the cuts available were all of the kind the handoffs forbid — "if a cut makes
+a file harder to follow, don't make it". Logged here because the two build reports each
+recorded the overrun of their own phase under "Not done", which is where a number goes to be
+read once; a target this repository keeps deciding not to meet is a decision, not a defect
+report. The constraints that are *not* negotiable held: the reference imports the standard
+library only, and no numbered check was dropped to save a line.
 
 **`mcp/` has no `__init__.py`.** A regular package named `mcp` at the repository root would
 shadow the installed one. A directory without `__init__.py` is only a namespace portion and
 loses to an installed regular package, which is what makes the layout safe.
+
+**The example adapter's gate lives in CI, not in `release-check`.** `release-check` has to be
+green in a fresh clone with no index access, and the only thing
+`.github/check_example_adapter.py` adds over the in-tree test is a real
+`pip install -e examples/external-adapter` — which needs the network for setuptools. So
+`release-check` runs eleven gates and the twelfth, the one that proves the four commands
+`docs/adding-a-system.md` promises a stranger, is a CI job. A gate that cannot run offline
+does not belong in the command whose contract is that it runs offline.
+
+**The MCP server's scope is the caller's word, and that is stated rather than defended.**
+Every tool takes an optional `scope`; the server does not authenticate anyone, has no session
+identity, and cannot tell two clients apart. Scope there is a namespace, not a boundary. The
+alternative — inventing an identity for a reference server over one in-process store — would
+be the server deciding something, which is the one thing it does not do. What it gained
+instead is `--scope NAME` / `AMR_MCP_SCOPE`, which binds a connection to one scope: the
+argument then defaults to that name and a call naming a different one is refused with the
+`scope:` code rather than redirected, because a client told its write succeeded in a scope it
+did not ask for has been lied to about where its memory is. `mcp/README.md` says in prose
+what is and is not worth trusting; SPEC.md §7 isolation remains a property of the system under
+test, which the suite calls directly.
 
 **The MCP server translates and decides nothing.** Errors are re-raised as tool errors with
 a coded prefix (`cycle`, `unresolved_source`, `forgotten`, `scope`, `not_found`,
@@ -197,10 +284,16 @@ which makes it a usable control.
 `tau`" rather than a second hardcoded 0.5, so the two numbers cannot drift apart when `tau`
 is changed. The declared floor stays a separate constant, because it means something else.
 
-**Twelve rounds.** Inheritance compounds monotonically with run length — 5/18 writes at six
-rounds, 17/36 at twelve, 28/60 at twenty, with the gated arm flat at zero throughout — so no
-round count flatters the gate. Twelve is where the effect is legible without the run being
-long enough that everything descends from everything.
+**Sixty rounds, and three arms rather than two.** Inheritance in the ungated arm rises and
+then sits still — 5/18 writes at six rounds, 17/36 at twelve, 28/60 at twenty, 87/180 at
+sixty, 138/270 at ninety — so the headline 48% is a plateau and not a number that any
+particular run length flatters. The `surfaced` arm stays between 5% and 8% across the same
+range and `gated` is flat at zero throughout, which is what makes the separation a finding
+rather than an artefact of where the run was stopped. Sixty is where the depth figure stops
+moving too (d9 at sixty and at ninety), and the third arm is why the length matters: with
+only `ungated` and `gated`, the gated zero is true by construction and measures nothing.
+`surfaced` — the agent sees effective confidence and nothing is withheld — is the arm with
+a result in it, and 5% against 48% is the claim the chart is for.
 
 **An agent occasionally cites an id it never read.** A tenth of writes attempt a hallucinated
 citation, the strict write rejects the whole thing (I1.6), and the count is reported. It is
