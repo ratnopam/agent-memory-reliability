@@ -51,6 +51,7 @@ packages = [
   "amr",
   "systems",
   "systems.reference",
+  "systems.persistent",
   "scenarios",
   "scenarios.contamination",
 ]

@@ -21,6 +21,11 @@ PY := $(shell if [ -x $(VENV_PY) ]; then echo $(VENV_PY); \
 SOURCES := src/amr properties systems scenarios examples taxonomy mcp conftest.py
 SEED ?= 7
 
+# The supplementary tests for the extra systems, as a wildcard: an adapter whose file is
+# not in this checkout is not a target that fails, it is a target with less to run.
+EXTRA_TESTS := $(wildcard properties/test_persistent_system.py \
+	properties/test_langgraph_adapters.py)
+
 # The same pattern CI greps for. A model client imported anywhere the suite can reach is
 # a measurement path with a model in it, whether or not the import is used.
 #
@@ -31,7 +36,7 @@ LLM_IMPORT := \b(import|from)[[:space:]]+(anthropic|openai|cohere|litellm|langch
 
 .DEFAULT_GOAL := help
 .PHONY: help deps test reproduce results determinism demo contamination matrix drift \
-	lint release-check mcp-test clean
+	extras extras-test lint release-check mcp-test clean
 
 help:
 	@echo "make test          run the conformance suite"
@@ -42,6 +47,9 @@ help:
 	@echo "make contamination the three-role simulation, into a temp dir, table on stdout"
 	@echo "make matrix        render results/<today>/raw.json as an SVG table"
 	@echo "make drift         does README.md render the committed matrix and chart?"
+	@echo "make extras        the suite against the extras too, into results/extras/<today>/"
+	@echo "make extras-test   the supplementary tests for the extra systems"
+	@echo "make systems       what is registered: default or extra, and in what modes"
 	@echo "make lint          ruff or pyflakes if available, otherwise compileall"
 	@echo "make release-check every gate, in order, one line each: run this before a tag"
 	@echo "make mcp-test      the MCP stdio integration test (installs the mcp package)"
@@ -94,6 +102,23 @@ matrix: deps
 
 drift: deps
 	@$(PY) -m amr drift
+
+systems: deps
+	@$(PY) -m amr systems
+
+# The extras are the adapters that are not the published matrix: a system is included when
+# SYSTEMS names it or when AMR_EXTRAS=1, and never otherwise. This writes
+# results/extras/<today>/, never into results/<today>/, so measuring an adapter cannot move
+# the table the README renders. It is not part of release-check for the same reason.
+extras: deps
+	$(PY) -m amr reproduce --extras
+
+# The supplementary tests for those adapters: a full suite run in a subprocess, a restart
+# across a process boundary, and the paging fault injection. Separate from `make test`
+# because they are slower than every numbered check put together and measure nothing the
+# specification counts.
+extras-test: deps
+	$(PY) -m pytest $(EXTRA_TESTS) -v
 
 lint: deps
 	@if $(PY) -c 'import ruff' >/dev/null 2>&1; then \

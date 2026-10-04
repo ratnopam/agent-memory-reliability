@@ -1,6 +1,6 @@
 """``amr`` — the command line the Makefile calls. ``python -m amr`` is the same thing.
 
-Eight subcommands, and the Makefile is a convenience over them rather than the other way
+Nine subcommands, and the Makefile is a convenience over them rather than the other way
 round, so nothing in this repository can only be done by GNU make:
 
 * ``test``          run the property suite, pytest's own output, nothing added
@@ -11,6 +11,7 @@ round, so nothing in this repository can only be done by GNU make:
 * ``contamination`` the three-role simulation, three arms
 * ``drift``         the README's matrix, figures and chart against committed results
 * ``replay``        re-execute a recorded tool-call trace and compare every result
+* ``systems``       what is registered: default or extra, and in what modes
 
 ``reproduce`` exits non-zero if any check FAILed. A DIVERGENCE does not fail the command:
 it is a reported disagreement with an open question in the specification, and a build that
@@ -20,6 +21,7 @@ went red on it would pressure whoever ran it to bury the finding.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -37,19 +39,30 @@ def cmd_test(extra: list[str]) -> int:
     return pytest.main([str(root / "properties"), "--rootdir", str(root), *extra])
 
 
-def cmd_reproduce(out: Path | None, quiet: bool) -> int:
+def cmd_reproduce(out: Path | None, quiet: bool, extras: bool = False) -> int:
     root = repo_root()
     spec_file = spec_path(root)
+    if extras:
+        # Set before the suite runs, because the registry reads it when it is asked for
+        # systems. The default output directory moves with it: an extras run is not the
+        # published matrix and must not be written where the published matrix lives.
+        os.environ["AMR_EXTRAS"] = "1"
     suite = run_suite(root, spec_path=spec_file)
     document = results.build_document(suite, root)
-    directory = out or results.results_dir(root)
+    if out is not None:
+        directory = out
+    elif extras or registry.extras_requested():
+        directory = results.extras_dir(root)
+    else:
+        directory = results.results_dir(root)
     raw_path = results.write(document, directory)
     summary_path = report.write(document, spec_file, directory)
-    # The README renders the reference's matrix. A run filtered with SYSTEMS is not the
-    # document that table is about, so it is not evidence of drift either way.
+    # The README renders the reference's matrix. A run filtered with SYSTEMS, or one
+    # carrying the extras, is not the document that table is about, so it is not evidence
+    # of drift either way.
     drift = (
         None
-        if registry.selected_names()
+        if registry.selected_names() or registry.extras_requested()
         else report.readme_matrix_drift(
             document, report.read_spec(spec_file), root / "README.md"
         )
@@ -133,6 +146,36 @@ def cmd_drift(raw: Path | None) -> int:
     return 0
 
 
+def cmd_systems() -> int:
+    """The inventory, including the rows a default run leaves out.
+
+    Printed rather than filtered through ``SYSTEMS``, because the question this answers
+    is what could be run, and a reader who has to guess a name guesses wrong. A system
+    whose optional dependency is absent is listed too, with what to install, because
+    "not here" and "not supported" are different answers.
+    """
+    rows = []
+    for registration in registry.registered():
+        missing = registration.missing
+        if missing:
+            modes = f"needs {', '.join(missing)}"
+            if registration.extra:
+                modes += f' — pip install -e ".[{registration.extra}]"'
+        else:
+            modes = ", ".join(
+                mode.value for mode in registry.modes_for(registration)
+            )
+        rows.append((registration.name, registration.source, registration.kind, modes))
+    if not rows:
+        print("no systems registered", file=sys.stderr)
+        return 1
+    width = max(len(name) for name, _, _, _ in rows)
+    source_width = max(len(source) for _, source, _, _ in rows)
+    for name, source, kind, modes in rows:
+        print(f"{name:<{width}}  {source:<{source_width}}  {kind:<7}  {modes}")
+    return 0
+
+
 def cmd_replay(traces: list[Path], system: str) -> int:
     """Re-run recorded tool calls and report any value that came back different.
 
@@ -173,6 +216,12 @@ USAGE = """the conformance suite for agent memory reliability.
   amr contamination   the three-role simulation: ungated, surfaced, gated
   amr drift           does README.md render the committed matrix, figures and chart?
   amr replay          re-execute a recorded tool-call trace; non-zero if a value moved
+  amr systems         what is registered: name, source, default or extra, forget modes
+
+A run with nothing set measures the default systems. SYSTEMS=a,b measures exactly those,
+default or not; AMR_EXTRAS=1 adds every extra whose dependencies are installed, which is
+what `amr reproduce --extras` does. An extras run writes results/extras/<today>/, because
+the published matrix is the default run and adding an adapter must not be able to move it.
 
 reproduce exits non-zero if any check FAILed. A DIVERGENCE does not: it is a reported
 disagreement with an open question in the specification, and a build that went red on it
@@ -201,6 +250,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--quiet", action="store_true", help="do not print the summary to stdout"
+    )
+    run.add_argument(
+        "--extras",
+        action="store_true",
+        help="add every installed extra and write results/extras/<today>/ instead",
     )
 
     commands.add_parser(
@@ -248,6 +302,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="a results/<date>/raw.json (default: the newest one committed)",
     )
 
+    commands.add_parser(
+        "systems", help="list the registered systems, default and extra"
+    )
+
     replay = commands.add_parser(
         "replay",
         help="re-execute a recorded tool-call trace and compare every result",
@@ -266,11 +324,25 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = build_parser()
-    if argv and argv[0] == "test":
-        return cmd_test(argv[1:])
-    args = parser.parse_args(argv)
+    try:
+        # Resolved before anything runs. Otherwise a mistyped SYSTEMS surfaces as a
+        # conftest import error with the real message buried under pytest's frames.
+        registry.systems()
+        if argv and argv[0] == "test":
+            return cmd_test(argv[1:])
+        return _dispatch(parser.parse_args(argv))
+    except (LookupError, ImportError) as error:
+        # Naming a system that is not registered, or one whose optional dependency is
+        # not installed. Both carry the inventory and what to install; a traceback would
+        # bury that under frames nobody who typed a name needs to read.
+        print(f"amr: {error}", file=sys.stderr)
+        print("amr: `amr systems` lists what this interpreter can run", file=sys.stderr)
+        return 2
+
+
+def _dispatch(args: argparse.Namespace) -> int:
     if args.command == "reproduce":
-        return cmd_reproduce(args.out, args.quiet)
+        return cmd_reproduce(args.out, args.quiet, args.extras)
     if args.command == "determinism":
         return cmd_determinism()
     if args.command == "demo":
@@ -281,6 +353,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_drift(args.raw)
     if args.command == "replay":
         return cmd_replay(args.traces, args.system)
+    if args.command == "systems":
+        return cmd_systems()
     return cmd_contamination(args.seed, args.out, args.quiet, args.rounds)
 
 

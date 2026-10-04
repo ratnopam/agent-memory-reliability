@@ -127,6 +127,39 @@ value is `module:attribute`, where the attribute is a callable that returns your
 accepting `default_forget_mode` or nothing. Nothing in this repository names your package,
 and nothing in your package imports the registry.
 
+### If your store only stores
+
+Most stores are key-value or document stores: they hold what you put in them and compute
+nothing. Implementing the twelve operations over one means writing confidence arithmetic,
+scope visibility and forget semantics yourself, which is a second implementation of the
+specification and the one with the bugs in it.
+
+[systems/persistent/](../systems/persistent/) is the other route. `WriteThrough` composes
+the reference implementation and persists every mutation through four methods — `put`,
+`get`, `delete`, `items` — so what gets measured is your storage with the reference's
+semantics on top:
+
+```python
+from systems.persistent import WriteThrough
+
+def factory(default_forget_mode=None):
+    return WriteThrough(MyBackend(...), default_forget_mode, name="my-store")
+```
+
+`systems/persistent/sqlite.py` is a complete backend in under eighty lines and
+`backend.py` is the interface with its one hazard written out: `items` must yield every
+item. A store whose listing is paged will answer the first page and stop, and a loader that
+takes a prefix for the whole rebuilds a *shorter* graph than it stored — intact chains,
+self-consistent records, and every effective confidence along the truncation higher than
+it should be. That is erasure inflation arriving through the loader instead of through a
+forget, and it is what the fault injection in
+[properties/test_persistent_system.py](../properties/test_persistent_system.py) exists to
+catch.
+
+The wrapper declares `durability` from the backend, so a backend that puts state in a file
+says `durable` and one that puts it in a dictionary says `round-trip`. Nothing else in the
+declaration changes, because nothing else about the system changed.
+
 ## 4. Running the suite against only your system
 
 ```bash
@@ -136,10 +169,16 @@ cd path/to/agent-memory-reliability
 SYSTEMS=my-store python -m amr reproduce --out /tmp/my-first-run
 ```
 
-Comma-separate to run more than one; omit `SYSTEMS` to run everything the process can see,
-which is how the committed results are produced. A filtered run writes the same
-`raw.json` and `summary.md`, and skips the README drift check, which is about the
-reference's matrix rather than yours.
+Comma-separate to run more than one. A filtered run writes the same `raw.json` and
+`summary.md`, and skips the README drift check, which is about the reference's matrix
+rather than yours.
+
+Omitting `SYSTEMS` runs the **default** systems, which is how the committed results are
+produced. A system registered as an extra — anything with an optional dependency, and
+every adapter in this repository that is not the reference — is measured only when you
+name it or set `AMR_EXTRAS=1`. `python -m amr systems` prints what this interpreter can
+run and which of the two each one is; `make extras` runs everything installed and writes
+`results/extras/<date>/`, which is deliberately not where the published matrix lives.
 
 It is quick. Copying the example, renaming the three things, and getting a first matrix out
 measured **2.1 seconds** of machine time end to end, the suite itself being 1.3 of them — so

@@ -64,7 +64,8 @@ def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[calla
     what a caller happened to select is not part of what they are asking.
     """
     monkeypatch.delenv("SYSTEMS", raising=False)
-    saved = (dict(registry._REGISTRY), dict(registry._SOURCES), registry._DISCOVERED)
+    monkeypatch.delenv("AMR_EXTRAS", raising=False)
+    saved = (dict(registry._REGISTRY), registry._DISCOVERED)
     saved_path = list(sys.path)
 
     def install(entry_points: str) -> tuple[registry.Registration, ...]:
@@ -72,7 +73,6 @@ def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[calla
         sys.path.insert(0, str(tmp_path))
         importlib.invalidate_caches()
         registry._REGISTRY.clear()
-        registry._SOURCES.clear()
         registry._DISCOVERED = False
         return registry.systems()
 
@@ -82,9 +82,7 @@ def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[calla
     importlib.invalidate_caches()
     registry._REGISTRY.clear()
     registry._REGISTRY.update(saved[0])
-    registry._SOURCES.clear()
-    registry._SOURCES.update(saved[1])
-    registry._DISCOVERED = saved[2]
+    registry._DISCOVERED = saved[1]
     if MODULE in sys.modules:
         del sys.modules[MODULE]
 
@@ -108,3 +106,84 @@ def test_an_entry_point_wins_over_an_in_tree_package_of_the_same_name(installed)
     winner = next(r for r in found if r.name == "reference")
     assert winner.source == "entry-point"
     assert winner.factory.__module__ == MODULE
+
+
+# ------------------------------------------------------------------- what a run selects
+
+
+@pytest.fixture
+def extras(monkeypatch: pytest.MonkeyPatch):
+    """Register two extras — one installable, one not — and take them away again.
+
+    Registered directly rather than through a throwaway distribution, because what is
+    under test is the selection rule and not discovery; the two are tested apart so a
+    failure says which one broke.
+    """
+    monkeypatch.delenv("SYSTEMS", raising=False)
+    monkeypatch.delenv("AMR_EXTRAS", raising=False)
+    registry.discover()
+    saved = dict(registry._REGISTRY)
+
+    def factory(**kwargs):
+        raise NotImplementedError("a placeholder for a real adapter")
+
+    registry.register("here", factory, default=False)
+    registry.register(
+        "absent",
+        factory,
+        default=False,
+        extra="somewhere",
+        requires=("a_module_that_is_not_installed",),
+    )
+    yield
+    registry._REGISTRY.clear()
+    registry._REGISTRY.update(saved)
+
+
+@pytest.mark.extra("selection-default-excludes-extras")
+def test_a_run_with_nothing_set_measures_only_default_systems(extras) -> None:
+    """This is what keeps the published matrix from moving when an adapter is added."""
+    names = [registration.name for registration in registry.systems()]
+    assert "reference" in names
+    assert "here" not in names and "absent" not in names, names
+    assert all(registration.default for registration in registry.systems())
+    # The inventory still shows them: not selected is not the same as not registered.
+    inventory = {r.name: r.kind for r in registry.registered()}
+    assert inventory["reference"] == "default"
+    assert inventory["here"] == "extra" and inventory["absent"] == "extra"
+
+
+@pytest.mark.extra("selection-extras-flag")
+def test_amr_extras_adds_every_extra_that_can_be_built(
+    extras, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An extra nobody named and nobody installed is skipped, not an error."""
+    monkeypatch.setenv("AMR_EXTRAS", "1")
+    names = [registration.name for registration in registry.systems()]
+    assert "reference" in names and "here" in names
+    assert "absent" not in names, "an uninstallable extra stopped a run that asked for all"
+
+    monkeypatch.setenv("AMR_EXTRAS", "0")
+    assert "here" not in [r.name for r in registry.systems()], "only 1 means yes"
+
+
+@pytest.mark.extra("selection-unknown-name-is-an-error")
+def test_naming_a_system_that_does_not_exist_says_what_does(extras) -> None:
+    with pytest.raises(LookupError) as raised:
+        registry.require("hear")
+    message = str(raised.value)
+    assert "hear" in message
+    assert "reference (default)" in message and "here (extra)" in message, message
+
+
+@pytest.mark.extra("selection-missing-dependency-names-the-extra")
+def test_naming_a_system_whose_dependency_is_missing_says_how_to_install_it(
+    extras,
+) -> None:
+    """The failure a reader hits first, and the one that used to look like absence."""
+    with pytest.raises(ModuleNotFoundError) as raised:
+        registry.require("absent")
+    message = str(raised.value)
+    assert "a_module_that_is_not_installed" in message
+    assert 'pip install -e ".[somewhere]"' in message, message
+    assert "absent (extra, not installed)" in message, message

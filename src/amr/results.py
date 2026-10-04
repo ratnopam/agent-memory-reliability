@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -29,6 +30,10 @@ SCHEMA_VERSION = "0.1"
 VOLATILE_FIELDS = ("generated_at",)
 
 UNKNOWN = "unknown"
+
+#: A published results directory is named by UTC date and nothing else. Anything else
+#: under ``results/`` is somebody's side run and is not the matrix a reader is shown.
+DATED = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def git_sha(root: Path) -> str:
@@ -148,13 +153,32 @@ def results_dir(root: Path, day: str | None = None) -> Path:
     return root / "results" / (day or datetime.now(timezone.utc).strftime("%Y-%m-%d"))
 
 
+def extras_dir(root: Path, day: str | None = None) -> Path:
+    """Where a run that includes the extras goes: ``results/extras/<date>/``.
+
+    Under its own directory rather than into the dated ones, because the published
+    matrix is the default run and a reader comparing two trees must not have to work out
+    which systems were in which file. ``latest_raw`` ignores this path on purpose.
+    """
+    return root / "results" / "extras" / (
+        day or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    )
+
+
 def latest_raw(root: Path) -> Path:
     """The newest committed ``results/<date>/raw.json``.
 
-    Directories are named by UTC date, so sorting them is sorting them by time. Used by
-    ``amr drift``, which checks what is in the repository rather than running the suite.
+    Directories are named by UTC date, so sorting them is sorting them by time — but only
+    the dated ones. ``results/`` also holds runs that are not the published matrix, and a
+    directory whose name sorts after a date (``results/extras/``) would otherwise become
+    "the newest results" and silently decide what ``amr drift`` compares the README with.
+    A drift gate that can be redirected by a directory name is not a gate.
     """
-    candidates = sorted((root / "results").glob("*/raw.json"))
+    candidates = sorted(
+        path
+        for path in (root / "results").glob("*/raw.json")
+        if DATED.fullmatch(path.parent.name)
+    )
     if not candidates:
         raise FileNotFoundError(f"no results/<date>/raw.json under {root / 'results'}")
     return candidates[-1]
@@ -167,7 +191,11 @@ def latest_contamination(root: Path) -> Path:
     can legitimately hold a dated directory with only one of them in it. ``amr drift``
     reads this to check the figures the README types out by hand.
     """
-    candidates = sorted((root / "results").glob("*/contamination.json"))
+    candidates = sorted(
+        path
+        for path in (root / "results").glob("*/contamination.json")
+        if DATED.fullmatch(path.parent.name)
+    )
     if not candidates:
         raise FileNotFoundError(
             f"no results/<date>/contamination.json under {root / 'results'}"

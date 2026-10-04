@@ -111,9 +111,14 @@ make determinism       # twice in fresh subprocesses, compared byte for byte
 ```
 
 Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, no model is called. Every target wraps the `amr` command line, which is the real interface:
-`amr test | reproduce | determinism | demo | contamination | matrix | drift | replay`. `make demo` prints
-the declaration, the matrix and the divergence in fifteen lines; `make release-check` runs every
+`amr test | reproduce | determinism | demo | contamination | matrix | drift | replay | systems`. `make demo`
+prints the declaration, the matrix and the divergence in fifteen lines; `make release-check` runs every
 gate, one line each.
+
+The matrix above is the **default** run. `make systems` lists what this checkout can measure; an
+adapter with an optional dependency is an **extra**, measured only when you name it
+(`SYSTEMS=sqlite python -m amr reproduce`) or run `make extras`, which writes
+`results/extras/<date>/` and can never move the published table.
 
 ## Use it
 
