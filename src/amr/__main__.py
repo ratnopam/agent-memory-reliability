@@ -9,7 +9,7 @@ round, so nothing in this repository can only be done by GNU make:
 * ``demo``          the reference through the suite, four blocks, no pytest output
 * ``matrix``        render an existing ``raw.json`` as an SVG table
 * ``contamination`` the three-role simulation, three arms
-* ``drift``         the README's matrix against committed results, running nothing
+* ``drift``         the README's matrix, figures and chart against committed results
 
 ``reproduce`` exits non-zero if any check FAILed. A DIVERGENCE does not fail the command:
 it is a reported disagreement with an open question in the specification, and a build that
@@ -104,16 +104,31 @@ def cmd_drift(raw: Path | None) -> int:
     ``make release-check`` wants each gate to be its own line, and a release is made from
     the tree as it stands: the question here is whether the table a reader sees in the
     README is the table in ``results/<date>/``, not whether today's run agrees with itself.
+
+    Three things the README asserts and nothing generates: the conformance matrix, the
+    contamination figures, and the chart. All three are reported together rather than one
+    per run, because a reader fixing one wants to know about the other two.
     """
     root = repo_root()
+    readme = root / "README.md"
     path = raw or results.latest_raw(root)
     document = results.load(path)
     spec = report.read_spec(spec_path(root))
-    drift = report.readme_matrix_drift(document, spec, root / "README.md")
-    if drift:
-        print(drift, file=sys.stderr)
+    contamination_path = results.latest_contamination(root)
+    contamination = results.load_contamination(contamination_path)
+    drifts = [
+        report.readme_matrix_drift(document, spec, readme),
+        report.readme_contamination_drift(contamination, readme),
+        report.embedded_chart_drift(root, contamination_path.with_name("contamination.svg")),
+    ]
+    found = [drift for drift in drifts if drift]
+    if found:
+        print("\n".join(found), file=sys.stderr)
         return 1
-    print(f"README.md renders the matrix in {_display(path, root)}")
+    print(
+        f"README.md renders the matrix in {_display(path, root)}, the figures in "
+        f"{_display(contamination_path, root)}, and that run's chart"
+    )
     return 0
 
 
@@ -141,7 +156,7 @@ USAGE = """the conformance suite for agent memory reliability.
   amr demo            the reference, its matrix, its one divergence: fifteen lines
   amr matrix          render an existing raw.json as an SVG table
   amr contamination   the three-role simulation: ungated, surfaced, gated
-  amr drift           does README.md render the committed matrix? runs nothing
+  amr drift           does README.md render the committed matrix, figures and chart?
 
 reproduce exits non-zero if any check FAILed. A DIVERGENCE does not: it is a reported
 disagreement with an open question in the specification, and a build that went red on it
@@ -206,7 +221,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     drift = commands.add_parser(
-        "drift", help="check README.md against the committed results matrix"
+        "drift",
+        help="check README.md against the committed matrix, figures and chart",
     )
     drift.add_argument(
         "raw",

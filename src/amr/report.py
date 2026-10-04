@@ -364,6 +364,113 @@ def readme_matrix_drift(document: dict, spec: SpecText, readme_path: Path) -> st
     return None
 
 
+#: The undated path the README embeds. Written by a deliberate contamination run; see
+#: ``scenarios/contamination/run.py``, which owns the constant this mirrors.
+STABLE_CHART = Path("docs") / "contamination.svg"
+
+#: The header row of the README's contamination table, and of nothing else in the file.
+CONTAMINATION_HEADER = "| arm |"
+
+
+def embedded_chart_drift(root: Path, dated_chart: Path) -> str | None:
+    """``docs/contamination.svg`` against the newest dated one. None means identical.
+
+    The README embeds the undated copy, so the undated copy is what a reader sees. Nothing
+    reads an image: if it were left behind by a regenerated run, the page would show last
+    month's bars beside this month's numbers and no test would notice. Bytes, not a
+    re-render, because the writer is deterministic and a diff of the two is not useful.
+    """
+    stable = root / STABLE_CHART
+    if not stable.exists():
+        return (
+            f"{STABLE_CHART.as_posix()} does not exist; the README embeds it. "
+            "Run `make results`."
+        )
+    if stable.read_bytes() != dated_chart.read_bytes():
+        return (
+            f"{STABLE_CHART.as_posix()} is not the chart in {dated_chart.parent.name}. "
+            "The README embeds the stale one; run `make results`."
+        )
+    return None
+
+
+def readme_contamination_drift(contamination: dict, readme_path: Path) -> str | None:
+    """The README's contamination figures against the simulation record.
+
+    Five numbers per arm, typed out by hand in prose-shaped Markdown: writes, inherited
+    with its percentage, inflated with its percentage, and depth. They are the headline
+    claim of the repository and the one table no generator writes, so this is where a
+    number goes stale. Percentages are formatted exactly as the scenario formats them,
+    so the README is held to the rounding the record itself prints.
+    """
+    if not readme_path.exists():
+        return f"{readme_path.name} does not exist"
+    lines = readme_path.read_text(encoding="utf-8").splitlines()
+    starts = [
+        index for index, line in enumerate(lines) if line.startswith(CONTAMINATION_HEADER)
+    ]
+    if not starts:
+        return (
+            f"{readme_path.name} contains no contamination table "
+            f"(no {CONTAMINATION_HEADER!r} row)"
+        )
+    end = starts[0] + 1
+    while end < len(lines) and lines[end].startswith("|"):
+        end += 1
+
+    arms = contamination["arms"]
+    problems: list[str] = []
+    named: list[str] = []
+    for line in lines[starts[0] + 1 : end]:
+        cells = _cells(line)
+        if _is_rule(cells):
+            continue
+        if len(cells) != 5:
+            problems.append(f"a row of {len(cells)} columns, not 5: {line.strip()}")
+            continue
+        label, found = cells[0], cells[1:]
+        # The README labels an arm and then qualifies it — "gated (τ = 0.5)". A prefix
+        # match reads that; it does not confuse "ungated" for "gated", which a substring
+        # match would.
+        matched = [name for name in arms if label.startswith(name)]
+        if len(matched) != 1:
+            problems.append(f"{label!r} names {len(matched)} simulated arms, not 1")
+            continue
+        named.append(matched[0])
+        expected = _contamination_cells(arms[matched[0]])
+        if found != expected:
+            problems.append(
+                f"{matched[0]}: README says {' | '.join(found)}; the simulation "
+                f"measured {' | '.join(expected)}"
+            )
+    absent = sorted(set(arms) - set(named))
+    if absent:
+        problems.append(f"no row for {', '.join(absent)}")
+    if problems:
+        return f"{readme_path.name} does not state the measured contamination:\n" + "\n".join(
+            f"- {problem}" for problem in problems
+        )
+    return None
+
+
+def _cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _is_rule(cells: list[str]) -> bool:
+    return all(set(cell) <= {"-", ":"} and cell for cell in cells)
+
+
+def _contamination_cells(arm: dict) -> list[str]:
+    """One arm's four figures, formatted as ``scenarios/contamination/run.py`` prints them."""
+    return [
+        str(arm["denominator"]),
+        f"{arm['inherited_count']} ({arm['inherited_fraction']:.0%})",
+        f"{arm['inflated_count']} ({arm['inflated_fraction']:.0%})",
+        str(arm["max_chain_depth"]),
+    ]
+
+
 def write(document: dict, spec_path: Path, directory: Path) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "summary.md"

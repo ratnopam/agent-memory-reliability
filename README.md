@@ -78,7 +78,7 @@ it. `make reproduce` fails if this table drifts.
 
 ## How far one bad memory travels
 
-![Contamination](results/2026-09-09/contamination.svg)
+![Contamination](docs/contamination.svg)
 
 Three simulated agents — `support-triage`, `sre`, `platform` — share one store for sixty
 rounds. In round one, two conflicting beliefs about the same fact are written: the runbook's

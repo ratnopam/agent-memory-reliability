@@ -160,6 +160,29 @@ def latest_raw(root: Path) -> Path:
     return candidates[-1]
 
 
+def latest_contamination(root: Path) -> Path:
+    """The newest committed ``results/<date>/contamination.json``.
+
+    Separate from ``latest_raw`` because the two are written by two commands and a tree
+    can legitimately hold a dated directory with only one of them in it. ``amr drift``
+    reads this to check the figures the README types out by hand.
+    """
+    candidates = sorted((root / "results").glob("*/contamination.json"))
+    if not candidates:
+        raise FileNotFoundError(
+            f"no results/<date>/contamination.json under {root / 'results'}"
+        )
+    return candidates[-1]
+
+
+def load_contamination(path: Path) -> dict:
+    """A scenario record, with enough checked that a wrong file is not read as figures."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if document.get("scenario") != "contamination":
+        raise ValueError(f"{path} declares scenario {document.get('scenario')!r}")
+    return document
+
+
 def write(document: dict, directory: Path) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "raw.json"

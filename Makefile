@@ -30,17 +30,18 @@ SEED ?= 7
 LLM_IMPORT := \b(import|from)[[:space:]]+(anthropic|openai|cohere|litellm|langchain|transformers)\b
 
 .DEFAULT_GOAL := help
-.PHONY: help deps test reproduce determinism demo contamination matrix drift lint \
-	release-check mcp-test clean
+.PHONY: help deps test reproduce results determinism demo contamination matrix drift \
+	lint release-check mcp-test clean
 
 help:
 	@echo "make test          run the conformance suite"
 	@echo "make reproduce     run the suite, write results/<today>/, print the summary"
+	@echo "make results       reproduce + contamination into results/<today>/: the producer"
 	@echo "make determinism   run everything twice into temp dirs and compare bytes"
 	@echo "make demo          the reference, its matrix, and its one divergence"
-	@echo "make contamination the three-role simulation, gated against ungated"
+	@echo "make contamination the three-role simulation, into a temp dir, table on stdout"
 	@echo "make matrix        render results/<today>/raw.json as an SVG table"
-	@echo "make drift         does README.md render the committed matrix?"
+	@echo "make drift         does README.md render the committed matrix and chart?"
 	@echo "make lint          ruff or pyflakes if available, otherwise compileall"
 	@echo "make release-check every gate, in order, one line each: run this before a tag"
 	@echo "make mcp-test      the MCP stdio integration test (installs the mcp package)"
@@ -66,14 +67,27 @@ test: deps
 reproduce: deps
 	$(PY) -m amr reproduce
 
+# The one target that deliberately writes the committed record. `reproduce` first, then
+# the simulation, because the simulation upserts its section into the summary.md the
+# first command writes; the simulation also refreshes docs/contamination.svg, which is
+# the undated path the README embeds. Everything else that produces results — the gates
+# in release-check, `make contamination`, `make determinism` — writes outside the tree,
+# so running a check never changes what is committed. See docs/RELEASE.md step 2.
+results: deps
+	$(PY) -m amr reproduce
+	$(PY) -m amr contamination --seed $(SEED)
+
 determinism: deps
 	$(PY) -m amr determinism
 
 demo: deps
 	@$(PY) -m amr demo
 
+# Into a temporary directory: this prints the table, it does not produce the record.
+# `make results` is the producer.
 contamination: deps
-	$(PY) -m amr contamination --seed $(SEED)
+	@out=$$(mktemp -d); trap 'rm -rf $$out' EXIT; \
+		$(PY) -m amr contamination --seed $(SEED) --out $$out
 
 matrix: deps
 	$(PY) -m amr matrix results/$$(date -u +%Y-%m-%d)/raw.json --svg
@@ -119,9 +133,10 @@ release-check: deps
 	gate "reference is stdlib only" "$(PY) .github/check_stdlib_only.py"; \
 	gate "no LLM in the measured path" "! grep -rniE '$(LLM_IMPORT)' --include='*.py' $(SOURCES)"; \
 	gate "no former name in the tree" "! git grep -i -q -e 'mem''ledger'"; \
-	gate "README renders the matrix" "$(PY) -m amr drift"; \
+	gate "README renders the results" "$(PY) -m amr drift"; \
 	gate "documentation links resolve" "$(PY) .github/check_links.py"; \
-	echo "release-check: ten gates, all green"
+	gate "the diagram's facts hold" "$(PY) .github/check_diagram.py"; \
+	echo "release-check: eleven gates, all green"
 
 mcp-test: deps
 	$(PY) -m pip install --quiet -e ".[mcp]"

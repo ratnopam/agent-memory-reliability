@@ -362,6 +362,14 @@ def upsert(path: Path, body: str, heading: str = "## Contamination") -> None:
     path.write_text(existing, encoding="utf-8")
 
 
+#: Where the README embeds the chart from. Undated on purpose: a dated path in the README
+#: goes stale silently the next time the results are regenerated, and nothing reads an
+#: image. Refreshed only by a run that writes into ``results/<date>/`` — that is, by
+#: ``make results`` and not by a gate running into a temporary directory. ``amr drift``
+#: requires this file to be byte-identical to the newest dated one.
+STABLE_CHART = Path("docs") / "contamination.svg"
+
+
 def main(
     root: Path,
     seed: int = DEFAULT_SEED,
@@ -371,17 +379,25 @@ def main(
     rounds: int = ROUNDS,
 ) -> int:
     document = record(root, seed, tau, rounds)
+    deliberate = out is None
     directory = out or results.results_dir(root)
     directory.mkdir(parents=True, exist_ok=True)
     json_path = directory / "contamination.json"
     svg_path = directory / "contamination.svg"
+    svg = chart.inherited_chart(document)
     json_path.write_text(results.serialise(document), encoding="utf-8")
-    svg_path.write_text(chart.inherited_chart(document), encoding="utf-8")
+    svg_path.write_text(svg, encoding="utf-8")
     upsert(directory / "summary.md", table(document))
+    written = [json_path.name, svg_path.name]
+    if deliberate:
+        # Only a run that was asked to produce the committed results touches the tree
+        # outside results/. A gate given --out leaves the repository exactly as it was.
+        (root / STABLE_CHART).write_text(svg, encoding="utf-8")
+        written.append(STABLE_CHART.as_posix())
     if not quiet:
         print(table(document), end="")
     inherited = ", ".join(
         f"{document['arms'][name]['inherited_fraction']:.0%} {name}" for name in ARMS
     )
-    print(f"wrote {json_path.name} and {svg_path.name} — inherited {inherited}")
+    print(f"wrote {' and '.join(written)} — inherited {inherited}")
     return 0
