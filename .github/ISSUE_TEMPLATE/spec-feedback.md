@@ -7,8 +7,9 @@ labels: ["specification"]
 
 <!--
 The specification is a draft and is under test as much as any implementation. Accepted
-feedback becomes a numbered entry in design-notes/spec-feedback.md with the reading that was
-taken and why. Fill in what you can; a partial report is better than none.
+feedback becomes a numbered entry in the project's feedback log with the reading that was
+taken and why, and the changelog at the foot of version2/SPEC.md names it. Fill in what you
+can; a partial report is better than none.
 -->
 
 **Which text.** Section or check number in `version2/SPEC.md`, and the version at the top of

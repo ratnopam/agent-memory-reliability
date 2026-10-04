@@ -37,7 +37,7 @@ PACKAGE = "amr_adapter_example"
 EXPECTED_FAILURES = frozenset({"P1.5", "P1.7", "P2.6"})
 
 #: Declaring one forget mode does not make the two multi-mode taxonomy reproductions
-#: inapplicable -- there is no such state (design-notes/spec-feedback.md, entry 16). They
+#: inapplicable -- there is no such state (the project's feedback log, entry 16). They
 #: are skipped, a skip is a FAIL, and it lands here rather than in a numbered cell.
 EXPECTED_SUITE_FAILURES = frozenset(
     {

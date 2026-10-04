@@ -223,8 +223,14 @@ __marimo__/
 .LSOverride
 ._*
 
-# The build brief is the author's working document, not part of the published repo.
-design-notes/HANDOFF-*.md
+# The author's working documents, not part of the published repo: the briefs, the build
+# reports, the feedback log, the decision record, the release history, and the notes read
+# off a screen while presenting. They are kept locally and are deliberately not in a clone,
+# so nothing published may link to them.
+design-notes/
+DECISIONS.md
+CHANGELOG.md
+presenter-notes*.md
 
 # Local agent and editor configuration. Untracked files count as a dirty tree when
 # `raw.json` stamps its git SHA, so anything local has to be ignored or the committed

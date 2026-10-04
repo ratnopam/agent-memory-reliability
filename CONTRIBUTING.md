@@ -24,9 +24,10 @@ The specification is the artefact under test here as much as any implementation.
 ambiguous, unfalsifiable, arguing for a behaviour it does not state, or missing a property that
 matters, open an issue using the **specification feedback** template, or a pull request against
 [version2/SPEC.md](version2/SPEC.md) — it is a draft and it moves. Every accepted piece of
-feedback becomes a numbered entry in [design-notes/spec-feedback.md](design-notes/spec-feedback.md)
-with the reading that was taken and why, so the next reader can see the argument rather than
-just the outcome. A new numbered check has to come with the test that fails without it, because
+feedback becomes a numbered entry in the project's feedback log with the reading that was taken
+and why, and the changelog at the foot of [version2/SPEC.md](version2/SPEC.md) names each entry
+against the version that absorbed it, so the next reader can see the argument rather than just
+the outcome. A new numbered check has to come with the test that fails without it, because
 a check nobody can run is a claim, and the point of this repository is that claims are checked.
 [version1/SPEC.md](version1/SPEC.md) is frozen and does not move.
 

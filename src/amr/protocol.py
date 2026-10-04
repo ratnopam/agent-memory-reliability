@@ -213,7 +213,7 @@ class Capabilities:
 
     ``notes`` is the one optional field, because SPEC.md 8 does not name it: it is free
     text, carried into ``raw.json`` and the MCP declaration for a reader, and nothing
-    computes anything from it. See design-notes/spec-feedback.md entry 35.
+    computes anything from it. See the project's feedback log, entry 35.
     """
 
     system: str

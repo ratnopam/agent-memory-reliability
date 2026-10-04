@@ -3,7 +3,7 @@
 Agents in separate scopes cannot read each other's memories by default, cannot corrupt
 each other's chains, and cannot use provenance as a side channel around the boundary.
 
-Two conventions this suite adopts, both logged in design-notes/spec-feedback.md: a record
+Two conventions this suite adopts, both logged in the project's feedback log: a record
 that is invisible is indistinguishable from a record that never existed, and a foreign
 ancestor stays opaque in a walk whether or not a grant exists.
 """

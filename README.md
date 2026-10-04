@@ -284,4 +284,4 @@ of this layer.
 ## License
 
 Apache 2.0. Contributions take two forms, results and specification feedback — see
-[CONTRIBUTING.md](CONTRIBUTING.md); releases are in [CHANGELOG.md](CHANGELOG.md).
+[CONTRIBUTING.md](CONTRIBUTING.md). Releases are tagged.

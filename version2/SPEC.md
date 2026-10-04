@@ -3,8 +3,8 @@
 **Version:** 0.6 (draft)
 **License:** Apache 2.0
 
-Draft. `version1/SPEC.md` (0.3) is frozen. Every numbered entry in
-`design-notes/spec-feedback.md` is folded in here: 1–19 came from building a conforming
+Draft. `version1/SPEC.md` (0.3) is frozen. Every numbered entry in the project's feedback
+log is folded in here: 1–19 came from building a conforming
 implementation and a suite against 0.3 and finding the text silent, ambiguous, or
 self-contradicting; 20–24, 25–33 and 34–36 were raised against the drafts that followed and
 are applied directly. The changelog at the foot of this file names each one against the
@@ -620,8 +620,8 @@ matrix.
   contain, with the requirement that such a snapshot MUST be rejected rather than opened
   with the dangling edge dropped; "five failure signals" becomes six, and the reporting
   order against a cycle is stated.
-- **0.5 (draft)** — the nine fixes raised against 0.4, entries 25–33 in
-  `design-notes/spec-feedback.md`. **F1** (entry 25): §6.2 says every mode retains the
+- **0.5 (draft)** — the nine fixes raised against 0.4, entries 25–33 in the project's
+  feedback log. **F1** (entry 25): §6.2 says every mode retains the
   forgotten record's id in a forgotten-id set, which is what makes I3.1 and I3.4 statable
   for `cascade`, `erase`, and `residue`; §6.1's `erase` and `residue` wording is corrected
   from "removed completely — content, `id`, and edges" accordingly, and §6.4's `residue`
@@ -644,7 +644,7 @@ matrix.
   prose; the empty-chain convention is unaffected. **F9** (entry 33): §5 states that a
   system declaring `residue` passes P2.5 with no check edited. `residue` remains
   spec-only: nothing in `systems/reference/` implements it.
-- **0.4 (draft)** — the nineteen entries in `design-notes/spec-feedback.md`, folded in.
+- **0.4 (draft)** — the nineteen entries in the project's feedback log, folded in.
   §3 grows from eight operations to twelve: `revisions` (entry 1) and `grant` / `revoke`
   / `grants` (entry 2), and gains an error-vocabulary table (§3.1). §8 defines the
   `durability` vocabulary, with `in-memory` failing P1.5 rather than being excused

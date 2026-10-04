@@ -54,7 +54,7 @@ SYSTEM = "amr-adapter-example"
 EXPECTED_FAILURES = frozenset({"P1.5", "P1.7", "P2.6"})
 
 #: Two taxonomy reproductions need a mode the example does not declare. They skip, and a
-#: skip is a FAIL (design-notes/spec-feedback.md, entry 16). Unnumbered, so they land in
+#: skip is a FAIL (the project's feedback log, entry 16). Unnumbered, so they land in
 #: ``suite_checks`` rather than in a matrix cell.
 EXPECTED_SUITE_FAILURES = frozenset(
     {

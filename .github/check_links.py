@@ -3,7 +3,7 @@
 The README is where every claim in this repository is read, and a link from it to a file
 that was renamed is the cheapest possible way to look careless. So the links are checked
 rather than trusted, in the places a first-time reader lands: the README, the contributing
-guide, the changelog, and everything under ``docs/``.
+guide, and everything under ``docs/``.
 
 ``.claude/skills/`` is checked for a different reason. A skill is instructions an agent
 follows without a person reading them first, so a link that has gone stale there is not an
@@ -37,7 +37,7 @@ EXTERNAL = ("http://", "https://", "mailto:", "//")
 
 def documents() -> list[Path]:
     """The pages a reader arrives at. One line to add another."""
-    found = [ROOT / "README.md", ROOT / "CONTRIBUTING.md", ROOT / "CHANGELOG.md"]
+    found = [ROOT / "README.md", ROOT / "CONTRIBUTING.md"]
     found.extend(sorted((ROOT / "docs").rglob("*.md")))
     found.extend(sorted((ROOT / ".claude" / "skills").rglob("*.md")))
     return [path for path in found if path.is_file()]

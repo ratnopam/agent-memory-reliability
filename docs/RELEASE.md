@@ -2,7 +2,7 @@
 
 The order matters in one place only: the results have to be regenerated from the tree that gets
 tagged, so the commit a reader checks out is the commit the numbers came from. That is step 2,
-and step 8 confirms no later commit moved the code out from under it. Everything else can be done
+and step 7 confirms no later commit moved the code out from under it. Everything else can be done
 in any order, and everything with a command next to it can be re-run.
 
 Nothing here is automated on purpose. A release of this repository is a claim that the matrix in
@@ -17,8 +17,9 @@ make release-check
 Eleven gates, one line each, first red stops the run: the conformance suite, the results, byte
 determinism, the contamination simulation, lint, the standard-library gate over
 `systems/reference/`, the model-import grep, the former-name grep, the README's rendering of the
-committed results, every relative link in `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md` and
-`docs/`, and the architecture diagram's facts. If a gate is red, it is red for the release too —
+committed results, every relative link in `README.md`, `CONTRIBUTING.md`, `docs/` and the
+published skill, and the architecture diagram's facts. If a gate is red, it is red for the
+release too —
 there is no such thing as a known-red gate here.
 
 Running it leaves the tree exactly as it was: every gate that produces results writes to a
@@ -28,7 +29,7 @@ only target that writes the record.
 A twelfth gate exists and is not in this command. `.github/check_example_adapter.py` asserts that
 a real `pip install -e examples/external-adapter` is discovered by its entry point and fails
 exactly the five checks its declaration predicts; it needs an index, and `release-check`'s
-contract is that it runs offline. It runs as the `examples` job in CI, which step 10 covers.
+contract is that it runs offline. It runs as the `examples` job in CI, which step 9 covers.
 
 ## 2. The results are regenerated from the tree being tagged
 
@@ -67,8 +68,8 @@ make release-check           # gate eight, "no former name in the tree"
 ```
 
 The eighth gate greps the whole tree, tracked files only, case-insensitively, for the name this
-work carried before it was renamed. It covers design notes and this file too, so a stray mention
-in prose counts — which is why neither the gate nor this checklist writes the name out: the
+work carried before it was renamed. It covers this file and every other document too, so a stray
+mention in prose counts — which is why neither the gate nor this checklist writes the name out: the
 pattern is assembled from two halves in the `Makefile`, because a gate whose own text is the only
 match trains people to switch it off.
 
@@ -95,16 +96,7 @@ here. If the demo has changed, re-render and look at the result before committin
 accepted by eye or not at all. If it has not changed, there is nothing to do: the committed GIF
 stays as it is.
 
-## 7. `SPEC-old.md` — the author's call
-
-`design-notes/SPEC-old.md` predates `version1/SPEC.md` and is referenced by neither. Keeping it,
-leaving it where it is, or dropping it are all defensible; deciding is not a checklist item that
-can be delegated, and the handoffs deliberately left it alone. It was moved out of the root under
-`design-notes/` so that a first-time reader does not meet a superseded specification first, which
-settles where it sits but not whether it should exist. Make that call before the tag rather than
-after.
-
-## 8. The results are the last thing regenerated
+## 7. The results are the last thing regenerated
 
 ```
 git diff --stat $(git rev-parse HEAD)   # nothing uncommitted
@@ -118,7 +110,7 @@ and a `results/` directory that disagrees with the code it was committed beside 
 this whole file exists to prevent. If the second `git status` is not empty, re-commit the results
 and start again at step 1 — the gates are cheap and a wrong matrix in a tagged release is not.
 
-## 9. Tag, then push
+## 8. Tag, then push
 
 ```
 git tag -a v0.1.0    -m "the conformance suite, the reference, and the erasure-inflation finding"
@@ -128,10 +120,10 @@ git push origin main --follow-tags
 
 Two tags, because the package version and the specification version move independently — a
 specification draft can advance without a release, and a release can ship without the
-specification moving. [CHANGELOG.md](../CHANGELOG.md) is the package's history; the changelog at
-the top of [version2/SPEC.md](../version2/SPEC.md) is the specification's.
+specification moving. The package's history is its tags; the changelog at the foot of
+[version2/SPEC.md](../version2/SPEC.md) is the specification's.
 
-## 10. CI is green on the tag
+## 9. CI is green on the tag
 
 Watch the run for the tagged commit, not for the branch: the `test` matrix covers Python 3.11
 through 3.14, and a version-dependent failure is exactly the kind of thing a local `release-check`
@@ -146,9 +138,8 @@ everything in the tree passes — which is precisely why that job exists off to 
 
 ## Not verifiable from inside the repository
 
-Five things on this list cannot be closed by running anything here, and are named so that they
-are not mistaken for gates: CI on the tag (step 10) needs a remote and a runner, and its
-`examples` job needs a package index; pushing the tags (step 9) needs push rights; the GIF (step
-6) is accepted by eye; the diagram's picture and any PNG re-export (step 5) are judgments about
-an image; and the `SPEC-old.md` decision (step 7) is a judgment, not a check. Everything else in
-this file is a command whose exit status is the answer.
+Four things on this list cannot be closed by running anything here, and are named so that they
+are not mistaken for gates: CI on the tag (step 9) needs a remote and a runner, and its
+`examples` job needs a package index; pushing the tags (step 8) needs push rights; the GIF (step
+6) is accepted by eye; and the diagram's picture and any PNG re-export (step 5) are judgments
+about an image. Everything else in this file is a command whose exit status is the answer.

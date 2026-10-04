@@ -119,6 +119,6 @@ that only stores — it wraps the reference's semantics around a four-method bac
   FAILs, that is the measurement.
 - **Never edit the specification.** `version2/SPEC.md` and `version1/SPEC.md` are read-only
   here. A specification edited to match an implementation measures nothing. Disagreements
-  with the text go to `design-notes/spec-feedback.md` as a numbered entry, by its author.
+  with the text go to the **specification feedback** issue template, raised by their author.
 - **Never regenerate `results/`.** Write under `.amr-runs/` and nowhere else.
 - **Never present a number you did not run.** If a command was not run, say it was not run.
