@@ -3,7 +3,7 @@
 **Version:** 0.6 (draft)
 **License:** Apache 2.0
 
-Draft. `version1/SPEC.md` (0.3) is frozen. Every numbered entry in the project's feedback
+Draft. Version 0.3 is frozen. Every numbered entry in the project's feedback
 log is folded in here: 1–19 came from building a conforming
 implementation and a suite against 0.3 and finding the text silent, ambiguous, or
 self-contradicting; 20–24, 25–33 and 34–36 were raised against the drafts that followed and

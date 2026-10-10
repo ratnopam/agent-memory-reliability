@@ -117,7 +117,7 @@ that only stores — it wraps the reference's semantics around a four-method bac
 
 - **Never modify a tracked file.** Not the suite, not a system, not a document. If a check
   FAILs, that is the measurement.
-- **Never edit the specification.** `version2/SPEC.md` and `version1/SPEC.md` are read-only
+- **Never edit the specification.** `version2/SPEC.md` is read-only
   here. A specification edited to match an implementation measures nothing. Disagreements
   with the text go to the **specification feedback** issue template, raised by their author.
 - **Never regenerate `results/`.** Write under `.amr-runs/` and nowhere else.

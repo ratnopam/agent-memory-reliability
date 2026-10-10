@@ -13,7 +13,7 @@ can; a partial report is better than none.
 -->
 
 **Which text.** Section or check number in `version2/SPEC.md`, and the version at the top of
-that file. (`version1/SPEC.md` is frozen: feedback on it can only change v2.)
+that file.
 
 **What it says, quoted.**
 

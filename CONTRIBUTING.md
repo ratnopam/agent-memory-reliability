@@ -29,7 +29,6 @@ and why, and the changelog at the foot of [version2/SPEC.md](version2/SPEC.md) n
 against the version that absorbed it, so the next reader can see the argument rather than just
 the outcome. A new numbered check has to come with the test that fails without it, because
 a check nobody can run is a claim, and the point of this repository is that claims are checked.
-[version1/SPEC.md](version1/SPEC.md) is frozen and does not move.
 
 ## Sign-off, not a CLA
 

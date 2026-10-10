@@ -37,8 +37,7 @@ revocable grant; a cross-scope ancestor contributes confidence without leaking c
 forget crosses the boundary; interleaved writes produce one well-formed DAG.
 
 The normative text is [version2/SPEC.md](version2/SPEC.md), draft v0.6: 26 numbered checks, one
-test each. [version1/SPEC.md](version1/SPEC.md) is frozen at the version the first results were
-produced against.
+test each.
 
 ## The finding: erasure inflation
 
