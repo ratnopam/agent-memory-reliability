@@ -1,5 +1,21 @@
 # agent-memory-reliability
 
+**A trust layer and conformance suite for AI agent memory** — walkable provenance, confidence
+bounded by the weakest evidence, forgetting with a defined effect on derived memories, and
+isolation between agents sharing a store. 26 executable checks, a reference implementation, and
+an MCP server. No language model in the measurement path.
+
+[![CI](https://github.com/ratnopam/agent-memory-reliability/actions/workflows/ci.yml/badge.svg)](https://github.com/ratnopam/agent-memory-reliability/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+![Spec v0.6 draft](https://img.shields.io/badge/spec-v0.6%20draft-informational)
+![Dependencies: pytest only](https://img.shields.io/badge/dependencies-pytest%20only-green.svg)
+
+[Four properties](#the-four-properties) · [The finding](#the-finding-erasure-inflation) ·
+[Results](#results) · [Run it](#run-the-suite) · [Use it](#use-it) ·
+[Add your system](#add-your-system) · [Store alone vs. with the layer](#store-alone-and-with-the-layer) ·
+[Poster](#poster) · [Limitations](#limitations)
+
 An agent writes a conclusion it derived from something it read last week. Nothing records
 that derivation, so nothing can tell you the conclusion rests on a note someone has since
 retracted. Retrieval benchmarks measure whether the right memory comes back. They do not measure
@@ -40,6 +56,8 @@ The normative text is [version2/SPEC.md](version2/SPEC.md), draft v0.6: 26 numbe
 test each.
 
 ## The finding: erasure inflation
+
+![Erasure inflation: tombstone holds at 0.40 while erase rises to 0.95](docs/explainer.gif)
 
 `min` over an empty chain is 1.0: a record with no ancestors is bounded only by its own claim.
 Correct for roots. It also means a forget that genuinely removes an ancestor shortens its
@@ -101,23 +119,37 @@ at 0.40 and cannot be cited, so that bar demonstrates the boundary where the sur
 measures what visibility alone achieves.** `make contamination` reproduces all three; same seed,
 same bytes.
 
-## Reproduce
+## Run the suite
 
 ```
 git clone https://github.com/ratnopam/agent-memory-reliability && cd agent-memory-reliability
+make test              # the conformance suite
 make reproduce         # the suite, results/<today>/, the summary
-make determinism       # twice in fresh subprocesses, compared byte for byte
 ```
 
-Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, no model is called. Every target wraps the `amr` command line, which is the real interface:
-`amr test | reproduce | determinism | demo | contamination | matrix | drift | replay | systems`. `make demo`
-prints the declaration, the matrix and the divergence in fifteen lines; `make release-check` runs every
-gate, one line each.
+Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, no model is called.
 
-The matrix above is the **default** run. `make systems` lists what this checkout can measure; an
-adapter with an optional dependency is an **extra**, measured only when you name it
-(`SYSTEMS=sqlite python -m amr reproduce`) or run `make extras`, which writes
-`results/extras/<date>/` and can never move the published table.
+| command | what it runs |
+|---|---|
+| `make test` | the conformance suite, every system × every declared mode |
+| `make reproduce` | the suite, written to `results/<today>/`, summary printed |
+| `make demo` | the declaration, the matrix and the divergence in fifteen lines |
+| `make determinism` | everything twice in fresh subprocesses, compared byte for byte |
+| `make contamination` | the three-arm simulation; same seed, same bytes |
+| `make extras` | the optional adapters as well, into `results/extras/<date>/` |
+| `make extras-test` | the supplementary tests for those adapters |
+| `make mcp-test` | the MCP server over real stdio |
+| `make release-check` | all eleven gates, one line each — run before a tag |
+| `make systems` | what this checkout can measure, and in which modes |
+
+Every target wraps the `amr` command line, which is the real interface:
+`amr test | reproduce | determinism | demo | contamination | matrix | drift | replay | systems`.
+
+The matrix above is the **default** run. An adapter with an optional dependency is an **extra**,
+measured only when you name it (`SYSTEMS=sqlite python -m amr reproduce`) or run `make extras`,
+which writes `results/extras/<date>/` and can never move the published table.
+[results/README.md](results/README.md) is the schema and the determinism rule;
+[docs/RELEASE.md](docs/RELEASE.md) is the gate-by-gate release checklist.
 
 ## Use it
 
@@ -249,7 +281,16 @@ Write `taxonomy/repro/<slug>.py` with a `reproduce(system) -> dict` over `amr.pr
 write `taxonomy/<slug>.md` embedding that module's source, and register it in
 `properties/test_taxonomy.py`. The suite runs the reproduction against every registered system
 and asserts the embedded snippet is byte-identical to the code that ran, so an entry cannot
-drift from what it describes.
+drift from what it describes. [taxonomy/README.md](taxonomy/README.md) is the entry format; four
+modes are catalogued today, one of them `open`.
+
+## Poster
+
+[![Reliability for Agent Memory — conference poster](poster/preview.png)](poster/agntcon-mcpcon-na-2026.pdf)
+
+AGNTCon + MCPCon North America 2026. The whole argument on one page: the weakest-link walk, the
+erasure-inflation finding, the three-arm contamination numbers, and what is still open.
+[PDF](poster/agntcon-mcpcon-na-2026.pdf) · [SVG](poster/agntcon-mcpcon-na-2026.svg)
 
 ## Against retrieval benchmarks
 
@@ -279,6 +320,13 @@ of this layer.
 - It does not judge conflicts. Deciding that two memories contradict requires semantics.
   Representing the judgment is in scope; making it is not.
 - It does not measure retrieval quality. See above.
+
+## Contributing
+
+A new numbered check comes with the test that fails without it — a check nobody can run is a
+claim, and the point here is that claims are checked. Disagreements with the specification go to
+the **specification feedback** issue template rather than into a patch, so the argument is on the
+record. [CONTRIBUTING.md](CONTRIBUTING.md) has the sign-off and the rest.
 
 ## License
 
