@@ -232,6 +232,13 @@ DECISIONS.md
 CHANGELOG.md
 presenter-notes*.md
 
+# Superseded assets kept on the author's disk. poster/ holds the current one; this is where
+# the previous cut went. Ignored rather than deleted, and ignored rather than left
+# untracked, because an untracked path makes `git status --porcelain` non-empty and
+# `results.git_sha` reads that — so a stray directory here stamps every regenerated
+# raw.json `-dirty`. See docs/RELEASE.md step 2.
+archive/
+
 # Local agent and editor configuration. Untracked files count as a dirty tree when
 # `raw.json` stamps its git SHA, so anything local has to be ignored or the committed
 # results claim to come from a tree nobody can reproduce.
