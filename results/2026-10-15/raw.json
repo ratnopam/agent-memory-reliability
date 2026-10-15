@@ -1,0 +1,1289 @@
+{
+  "environment": {
+    "git_sha": "c5551f69e93ab6b01ef1026b47dc73291a4221c9",
+    "platform": "darwin",
+    "pytest_version": "9.1.1",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "generated_at": "2026-10-15T23:19:45+00:00",
+  "missing_checks": [],
+  "runs": [
+    {
+      "capabilities": {
+        "cross_scope_derivation": "opaque-ancestor",
+        "default_forget_mode": "tombstone",
+        "durability": "round-trip",
+        "empty_chain_convention": 1.0,
+        "notes": [
+          "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises NotFoundError, exactly as an unassigned id would."
+        ],
+        "revision": "logged",
+        "revision_raise_supported": true,
+        "scopes": "native",
+        "supported_forget_modes": [
+          "cascade",
+          "erase",
+          "tombstone"
+        ],
+        "system": "reference",
+        "version": "0.1.0"
+      },
+      "checks": [
+        {
+          "check": "P1.1",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.2",
+          "detail": "P1.2 | Three-hop chain, walk from leaf | All three ancestors returned",
+          "name": "test_p1_2_three_hop_chain[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_2_three_hop_chain[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.3",
+          "detail": "P1.3 | Diamond graph, walk from sink | Shared ancestor returned exactly once",
+          "name": "test_p1_3_diamond_shared_ancestor_once[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_3_diamond_shared_ancestor_once[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.4",
+          "detail": "P1.4 | Walk after an ancestor is forgotten | No dangling ids, per declared mode",
+          "name": "test_p1_4_walk_after_ancestor_forgotten[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_4_walk_after_ancestor_forgotten[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.5",
+          "detail": "P1.5 | Walk after store reopen | Byte-identical chain",
+          "name": "test_p1_5_walk_after_store_reopen[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_5_walk_after_store_reopen[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.6",
+          "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
+          "name": "test_p1_6_unresolvable_source_rejected[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-tombstone]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.1",
+          "detail": "P2.1 | Chain 0.4 -> 0.9, read leaf | 0.4",
+          "name": "test_p2_1_chain_bounded_by_weakest[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_1_chain_bounded_by_weakest[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.2",
+          "detail": "P2.2 | Revise root 0.9 -> 0.2, read leaf | Leaf <= 0.2",
+          "name": "test_p2_2_downgrade_propagates[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_2_downgrade_propagates[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.3",
+          "detail": "P2.3 | Diamond with one weak ancestor | Sink bounded once, not squared",
+          "name": "test_p2_3_diamond_bounded_once[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_3_diamond_bounded_once[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.4",
+          "detail": "P2.4 | Root with no sources, declared 0.7 | 0.7",
+          "name": "test_p2_4_root_is_its_own_bound[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_4_root_is_its_own_bound[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.5",
+          "detail": "P2.5 | Forget weakest ancestor, re-read leaf | effective_after <= effective_before",
+          "name": "test_p2_5_no_inflation_on_removal[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_5_no_inflation_on_removal[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.6",
+          "detail": "P2.6 | Read revision history after a revise | Prior value, new value, and reason present",
+          "name": "test_p2_6_revisions_are_recorded[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_6_revisions_are_recorded[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.7",
+          "detail": "P2.7 | Raise an ancestor above a descendant's declared value | Descendant unchanged",
+          "name": "test_p2_7_raise_does_not_lift_descendant[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_7_raise_does_not_lift_descendant[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-tombstone]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.1",
+          "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
+          "name": "test_p3_1_forgotten_is_not_not_found[reference-tombstone]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_1_forgotten_is_not_not_found[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.2",
+          "detail": "P3.2 | Forget twice | Second call succeeds, no change",
+          "name": "test_p3_2_forget_is_idempotent[reference-tombstone]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_2_forget_is_idempotent[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.3",
+          "detail": "P3.3 | Forget a mid-chain record | Descendants handled per declared mode",
+          "name": "test_p3_3_mid_chain_forget_handles_descendants[reference-tombstone]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_3_mid_chain_forget_handles_descendants[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.4",
+          "detail": "P3.4 | Re-write identical content | New id, no inherited descendants",
+          "name": "test_p3_4_no_resurrection[reference-tombstone]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_4_no_resurrection[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.5",
+          "detail": "P3.5 | Inspect receipt | Mode, affected ids, and deltas present",
+          "name": "test_p3_5_receipt_is_complete[reference-tombstone]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_5_receipt_is_complete[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.1",
+          "detail": "P4.1 | Write in A, list in B | Absent",
+          "name": "test_p4_1_write_in_a_absent_in_b[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_1_write_in_a_absent_in_b[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.2",
+          "detail": "P4.2 | Grant, read, revoke, read | Visible then absent",
+          "name": "test_p4_2_grant_then_revoke[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_2_grant_then_revoke[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.3",
+          "detail": "P4.3 | Cross-scope derivation, walk from B | Ancestor id present, content withheld",
+          "name": "test_p4_3_opaque_ancestor[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_3_opaque_ancestor[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.4",
+          "detail": "P4.4 | Forget in A with descendants in B | Declared mode applied across the boundary",
+          "name": "test_p4_4_cross_scope_forget[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_4_cross_scope_forget[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.5",
+          "detail": "P4.5 | Concurrent interleaved writes | DAG intact, no lost edges",
+          "name": "test_p4_5_interleaved_writes[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-tombstone]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-tombstone]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-tombstone]",
+          "outcome": "PASS"
+        }
+      ],
+      "forget_mode": "tombstone",
+      "supplementary": [],
+      "system": "reference",
+      "system_version": "0.1.0"
+    },
+    {
+      "capabilities": {
+        "cross_scope_derivation": "opaque-ancestor",
+        "default_forget_mode": "cascade",
+        "durability": "round-trip",
+        "empty_chain_convention": 1.0,
+        "notes": [
+          "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises NotFoundError, exactly as an unassigned id would."
+        ],
+        "revision": "logged",
+        "revision_raise_supported": true,
+        "scopes": "native",
+        "supported_forget_modes": [
+          "cascade",
+          "erase",
+          "tombstone"
+        ],
+        "system": "reference",
+        "version": "0.1.0"
+      },
+      "checks": [
+        {
+          "check": "P1.1",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.2",
+          "detail": "P1.2 | Three-hop chain, walk from leaf | All three ancestors returned",
+          "name": "test_p1_2_three_hop_chain[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_2_three_hop_chain[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.3",
+          "detail": "P1.3 | Diamond graph, walk from sink | Shared ancestor returned exactly once",
+          "name": "test_p1_3_diamond_shared_ancestor_once[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_3_diamond_shared_ancestor_once[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.4",
+          "detail": "P1.4 | Walk after an ancestor is forgotten | No dangling ids, per declared mode",
+          "name": "test_p1_4_walk_after_ancestor_forgotten[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_4_walk_after_ancestor_forgotten[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.5",
+          "detail": "P1.5 | Walk after store reopen | Byte-identical chain",
+          "name": "test_p1_5_walk_after_store_reopen[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_5_walk_after_store_reopen[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.6",
+          "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
+          "name": "test_p1_6_unresolvable_source_rejected[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-cascade]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.1",
+          "detail": "P2.1 | Chain 0.4 -> 0.9, read leaf | 0.4",
+          "name": "test_p2_1_chain_bounded_by_weakest[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_1_chain_bounded_by_weakest[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.2",
+          "detail": "P2.2 | Revise root 0.9 -> 0.2, read leaf | Leaf <= 0.2",
+          "name": "test_p2_2_downgrade_propagates[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_2_downgrade_propagates[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.3",
+          "detail": "P2.3 | Diamond with one weak ancestor | Sink bounded once, not squared",
+          "name": "test_p2_3_diamond_bounded_once[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_3_diamond_bounded_once[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.4",
+          "detail": "P2.4 | Root with no sources, declared 0.7 | 0.7",
+          "name": "test_p2_4_root_is_its_own_bound[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_4_root_is_its_own_bound[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.5",
+          "detail": "P2.5 | Forget weakest ancestor, re-read leaf | effective_after <= effective_before",
+          "name": "test_p2_5_no_inflation_on_removal[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_5_no_inflation_on_removal[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.6",
+          "detail": "P2.6 | Read revision history after a revise | Prior value, new value, and reason present",
+          "name": "test_p2_6_revisions_are_recorded[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_6_revisions_are_recorded[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.7",
+          "detail": "P2.7 | Raise an ancestor above a descendant's declared value | Descendant unchanged",
+          "name": "test_p2_7_raise_does_not_lift_descendant[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_7_raise_does_not_lift_descendant[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-cascade]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.1",
+          "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
+          "name": "test_p3_1_forgotten_is_not_not_found[reference-cascade]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_1_forgotten_is_not_not_found[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.2",
+          "detail": "P3.2 | Forget twice | Second call succeeds, no change",
+          "name": "test_p3_2_forget_is_idempotent[reference-cascade]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_2_forget_is_idempotent[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.3",
+          "detail": "P3.3 | Forget a mid-chain record | Descendants handled per declared mode",
+          "name": "test_p3_3_mid_chain_forget_handles_descendants[reference-cascade]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_3_mid_chain_forget_handles_descendants[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.4",
+          "detail": "P3.4 | Re-write identical content | New id, no inherited descendants",
+          "name": "test_p3_4_no_resurrection[reference-cascade]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_4_no_resurrection[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.5",
+          "detail": "P3.5 | Inspect receipt | Mode, affected ids, and deltas present",
+          "name": "test_p3_5_receipt_is_complete[reference-cascade]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_5_receipt_is_complete[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.1",
+          "detail": "P4.1 | Write in A, list in B | Absent",
+          "name": "test_p4_1_write_in_a_absent_in_b[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_1_write_in_a_absent_in_b[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.2",
+          "detail": "P4.2 | Grant, read, revoke, read | Visible then absent",
+          "name": "test_p4_2_grant_then_revoke[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_2_grant_then_revoke[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.3",
+          "detail": "P4.3 | Cross-scope derivation, walk from B | Ancestor id present, content withheld",
+          "name": "test_p4_3_opaque_ancestor[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_3_opaque_ancestor[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.4",
+          "detail": "P4.4 | Forget in A with descendants in B | Declared mode applied across the boundary",
+          "name": "test_p4_4_cross_scope_forget[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_4_cross_scope_forget[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.5",
+          "detail": "P4.5 | Concurrent interleaved writes | DAG intact, no lost edges",
+          "name": "test_p4_5_interleaved_writes[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-cascade]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-cascade]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-cascade]",
+          "outcome": "PASS"
+        }
+      ],
+      "forget_mode": "cascade",
+      "supplementary": [],
+      "system": "reference",
+      "system_version": "0.1.0"
+    },
+    {
+      "capabilities": {
+        "cross_scope_derivation": "opaque-ancestor",
+        "default_forget_mode": "erase",
+        "durability": "round-trip",
+        "empty_chain_convention": 1.0,
+        "notes": [
+          "A foreign ancestor is opaque in a provenance walk whether or not a grant exists; the grant governs get, not the walk.",
+          "A write may only cite sources the writing scope can read, and an unreadable source is rejected as unresolvable rather than as a permission error.",
+          "revise and forget require ownership. A record the caller cannot see raises NotFoundError, exactly as an unassigned id would."
+        ],
+        "revision": "logged",
+        "revision_raise_supported": true,
+        "scopes": "native",
+        "supported_forget_modes": [
+          "cascade",
+          "erase",
+          "tombstone"
+        ],
+        "system": "reference",
+        "version": "0.1.0"
+      },
+      "checks": [
+        {
+          "check": "P1.1",
+          "detail": "P1.1 | Write citing an id that has not been assigned | Rejected",
+          "name": "test_p1_1_unassigned_id_rejected[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_1_unassigned_id_rejected[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.2",
+          "detail": "P1.2 | Three-hop chain, walk from leaf | All three ancestors returned",
+          "name": "test_p1_2_three_hop_chain[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_2_three_hop_chain[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.3",
+          "detail": "P1.3 | Diamond graph, walk from sink | Shared ancestor returned exactly once",
+          "name": "test_p1_3_diamond_shared_ancestor_once[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_3_diamond_shared_ancestor_once[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.4",
+          "detail": "P1.4 | Walk after an ancestor is forgotten | No dangling ids, per declared mode",
+          "name": "test_p1_4_walk_after_ancestor_forgotten[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_4_walk_after_ancestor_forgotten[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.5",
+          "detail": "P1.5 | Walk after store reopen | Byte-identical chain",
+          "name": "test_p1_5_walk_after_store_reopen[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_5_walk_after_store_reopen[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.6",
+          "detail": "P1.6 | Write citing an unresolvable source id | Rejected, nothing persisted",
+          "name": "test_p1_6_unresolvable_source_rejected[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_6_unresolvable_source_rejected[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P1.7",
+          "detail": "P1.7 | Deserialise a store containing a cycle | Rejected",
+          "name": "test_p1_7_cyclic_snapshot_rejected[reference-erase]",
+          "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.1",
+          "detail": "P2.1 | Chain 0.4 -> 0.9, read leaf | 0.4",
+          "name": "test_p2_1_chain_bounded_by_weakest[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_1_chain_bounded_by_weakest[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.2",
+          "detail": "P2.2 | Revise root 0.9 -> 0.2, read leaf | Leaf <= 0.2",
+          "name": "test_p2_2_downgrade_propagates[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_2_downgrade_propagates[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.3",
+          "detail": "P2.3 | Diamond with one weak ancestor | Sink bounded once, not squared",
+          "name": "test_p2_3_diamond_bounded_once[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_3_diamond_bounded_once[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.4",
+          "detail": "P2.4 | Root with no sources, declared 0.7 | 0.7",
+          "name": "test_p2_4_root_is_its_own_bound[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_4_root_is_its_own_bound[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.5",
+          "detail": "erase: m003 rose 0.4 -> 0.9 when its weakest ancestor was forgotten; min over the empty chain returns 1.0",
+          "divergences": [
+            {
+              "check": "P2.5",
+              "detail": "erase: m003 rose 0.4 -> 0.9 when its weakest ancestor was forgotten; min over the empty chain returns 1.0",
+              "spec_ref": "SPEC.md 6.4"
+            }
+          ],
+          "name": "test_p2_5_no_inflation_on_removal[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_5_no_inflation_on_removal[reference-erase]",
+          "outcome": "DIVERGENCE"
+        },
+        {
+          "check": "P2.6",
+          "detail": "P2.6 | Read revision history after a revise | Prior value, new value, and reason present",
+          "name": "test_p2_6_revisions_are_recorded[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_6_revisions_are_recorded[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.7",
+          "detail": "P2.7 | Raise an ancestor above a descendant's declared value | Descendant unchanged",
+          "name": "test_p2_7_raise_does_not_lift_descendant[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_7_raise_does_not_lift_descendant[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P2.8",
+          "detail": "P2.8 | Read effective_confidence from the owner and from a granted reader | Identical",
+          "name": "test_p2_8_effective_confidence_is_scope_invariant[reference-erase]",
+          "nodeid": "properties/test_p2_confidence.py::test_p2_8_effective_confidence_is_scope_invariant[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.1",
+          "detail": "P3.1 | Read a forgotten record | `Forgotten`, distinct from `NotFound`",
+          "name": "test_p3_1_forgotten_is_not_not_found[reference-erase]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_1_forgotten_is_not_not_found[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.2",
+          "detail": "P3.2 | Forget twice | Second call succeeds, no change",
+          "name": "test_p3_2_forget_is_idempotent[reference-erase]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_2_forget_is_idempotent[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.3",
+          "detail": "P3.3 | Forget a mid-chain record | Descendants handled per declared mode",
+          "name": "test_p3_3_mid_chain_forget_handles_descendants[reference-erase]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_3_mid_chain_forget_handles_descendants[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.4",
+          "detail": "P3.4 | Re-write identical content | New id, no inherited descendants",
+          "name": "test_p3_4_no_resurrection[reference-erase]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_4_no_resurrection[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P3.5",
+          "detail": "P3.5 | Inspect receipt | Mode, affected ids, and deltas present",
+          "name": "test_p3_5_receipt_is_complete[reference-erase]",
+          "nodeid": "properties/test_p3_forget.py::test_p3_5_receipt_is_complete[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.1",
+          "detail": "P4.1 | Write in A, list in B | Absent",
+          "name": "test_p4_1_write_in_a_absent_in_b[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_1_write_in_a_absent_in_b[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.2",
+          "detail": "P4.2 | Grant, read, revoke, read | Visible then absent",
+          "name": "test_p4_2_grant_then_revoke[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_2_grant_then_revoke[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.3",
+          "detail": "P4.3 | Cross-scope derivation, walk from B | Ancestor id present, content withheld",
+          "name": "test_p4_3_opaque_ancestor[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_3_opaque_ancestor[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.4",
+          "detail": "P4.4 | Forget in A with descendants in B | Declared mode applied across the boundary",
+          "name": "test_p4_4_cross_scope_forget[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_4_cross_scope_forget[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.5",
+          "detail": "P4.5 | Concurrent interleaved writes | DAG intact, no lost edges",
+          "name": "test_p4_5_interleaved_writes[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_5_interleaved_writes[reference-erase]",
+          "outcome": "PASS"
+        },
+        {
+          "check": "P4.6",
+          "detail": "P4.6 | Reader with a grant attempts revise and forget | ScopeError, nothing applied",
+          "name": "test_p4_6_grant_conveys_reading_only[reference-erase]",
+          "nodeid": "properties/test_p4_isolation.py::test_p4_6_grant_conveys_reading_only[reference-erase]",
+          "outcome": "PASS"
+        }
+      ],
+      "forget_mode": "erase",
+      "supplementary": [],
+      "system": "reference",
+      "system_version": "0.1.0"
+    }
+  ],
+  "schema": "0.1",
+  "spec": {
+    "checks": [
+      "P1.1",
+      "P1.2",
+      "P1.3",
+      "P1.4",
+      "P1.5",
+      "P1.6",
+      "P1.7",
+      "P2.1",
+      "P2.2",
+      "P2.3",
+      "P2.4",
+      "P2.5",
+      "P2.6",
+      "P2.7",
+      "P2.8",
+      "P3.1",
+      "P3.2",
+      "P3.3",
+      "P3.4",
+      "P3.5",
+      "P4.1",
+      "P4.2",
+      "P4.3",
+      "P4.4",
+      "P4.5",
+      "P4.6"
+    ],
+    "path": "version2/SPEC.md"
+  },
+  "suite_checks": [
+    {
+      "detail": "The drift that matters: a FAIL quietly written up as a PASS.",
+      "name": "test_a_cell_the_run_does_not_produce_is_reported",
+      "nodeid": "properties/test_pair_report.py::test_a_cell_the_run_does_not_produce_is_reported",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The claim ``durable`` makes, checked across a process boundary.",
+      "extra": "persistent-survives-a-process-restart",
+      "name": "test_a_chain_written_by_a_dead_process_walks_identically",
+      "nodeid": "properties/test_persistent_system.py::test_a_chain_written_by_a_dead_process_walks_identically",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The control. Without this, the test above passes for the wrong reason.",
+      "name": "test_a_complete_declaration_constructs",
+      "nodeid": "properties/test_capabilities.py::test_a_complete_declaration_constructs",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Both directions, and the one case that is neither: a tree with nothing to compare.",
+      "name": "test_a_missing_table_and_a_missing_run_are_different_reports",
+      "nodeid": "properties/test_pair_report.py::test_a_missing_table_and_a_missing_run_are_different_reports",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The control. Without it every test below passes for the wrong reason.",
+      "name": "test_a_readme_that_renders_the_run_agrees",
+      "nodeid": "properties/test_pair_report.py::test_a_readme_that_renders_the_run_agrees",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "``CHAIN`` records against ``PAGE`` rows: a one-page loader cannot pass this.",
+      "extra": "persistent-reload-pages-through-everything",
+      "name": "test_a_reload_pages_through_more_records_than_one_page",
+      "nodeid": "properties/test_persistent_system.py::test_a_reload_pages_through_more_records_than_one_page",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The fault injection that makes the test above load-bearing.",
+      "extra": "persistent-truncated-reload-is-caught",
+      "name": "test_a_reload_that_stops_at_the_first_page_is_caught",
+      "nodeid": "properties/test_persistent_system.py::test_a_reload_that_stops_at_the_first_page_is_caught",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "This is what keeps the published matrix from moving when an adapter is added.",
+      "extra": "selection-default-excludes-extras",
+      "name": "test_a_run_with_nothing_set_measures_only_default_systems",
+      "nodeid": "properties/test_registry.py::test_a_run_with_nothing_set_measures_only_default_systems",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The likeliest mistake: a run filtered to one system, rendered as a pair.",
+      "name": "test_a_system_that_is_not_in_the_document_is_named",
+      "nodeid": "properties/test_pair_report.py::test_a_system_that_is_not_in_the_document_is_named",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Four columns, because a third system in the header is a different table.",
+      "name": "test_a_table_with_the_wrong_number_of_columns_is_reported",
+      "nodeid": "properties/test_pair_report.py::test_a_table_with_the_wrong_number_of_columns_is_reported",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The header carries the forget mode the session ran under.",
+      "extra": "traces-require-a-header",
+      "name": "test_a_trace_without_a_header_is_refused",
+      "nodeid": "properties/test_traces.py::test_a_trace_without_a_header_is_refused",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Dated and nothing else: a scratch directory is not a release.",
+      "name": "test_a_working_directory_under_results_is_ignored_too",
+      "nodeid": "properties/test_results_layout.py::test_a_working_directory_under_results_is_ignored_too",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An extra nobody named and nobody installed is skipped, not an error.",
+      "extra": "selection-extras-flag",
+      "name": "test_amr_extras_adds_every_extra_that_can_be_built",
+      "nodeid": "properties/test_registry.py::test_amr_extras_adds_every_extra_that_can_be_built",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "",
+      "extra": "traces-detect-a-moved-value",
+      "name": "test_an_altered_recording_is_reported",
+      "nodeid": "properties/test_traces.py::test_an_altered_recording_is_reported",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Filtering everything out has to read as \"nothing published\", not as a crash.",
+      "name": "test_an_empty_results_tree_says_so",
+      "nodeid": "properties/test_results_layout.py::test_an_empty_results_tree_says_so",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "One name, one registration: the declared install wins, and nothing is listed twice.",
+      "extra": "entry-point-deduplication",
+      "name": "test_an_entry_point_wins_over_an_in_tree_package_of_the_same_name",
+      "nodeid": "properties/test_registry.py::test_an_entry_point_wins_over_an_in_tree_package_of_the_same_name",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A package declaring amr.systems is found with no edit to this repository.",
+      "extra": "entry-point-discovery",
+      "name": "test_an_external_distribution_is_discovered",
+      "nodeid": "properties/test_registry.py::test_an_external_distribution_is_discovered",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The decoy. ``results/extras/`` holds a real raw.json and must still be ignored.",
+      "name": "test_an_extras_run_does_not_become_the_published_matrix",
+      "nodeid": "properties/test_results_layout.py::test_an_extras_run_does_not_become_the_published_matrix",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "One blob would make \"the store holds records\" a sentence about a string.",
+      "extra": "persistent-stores-one-item-per-record",
+      "name": "test_each_record_is_its_own_item_and_a_forget_removes_it",
+      "nodeid": "properties/test_persistent_system.py::test_each_record_is_its_own_item_and_a_forget_removes_it",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "I2.4: the same diamond built in two orders yields the same numbers.",
+      "extra": "insertion-order-independence",
+      "name": "test_effective_confidence_is_insertion_order_independent[reference]",
+      "nodeid": "properties/test_p2_confidence.py::test_effective_confidence_is_insertion_order_independent[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "I2.4: ten random DAGs, each written in two valid topological orders, agree.",
+      "extra": "topological-order-independence",
+      "name": "test_effective_confidence_is_topological_order_independent[reference]",
+      "nodeid": "properties/test_p2_confidence.py::test_effective_confidence_is_topological_order_independent[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Erasing the weakest ancestor raises the descendant. SPEC.md 6.4.",
+      "extra": "example-erasure-inflation",
+      "name": "test_erasure_inflation_prints_three_comparable_numbers",
+      "nodeid": "properties/test_examples.py::test_erasure_inflation_prints_three_comparable_numbers",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "taxonomy/erasure-inflation.md: erase raises a survivor's confidence.",
+      "extra": "taxonomy-erasure-inflation",
+      "name": "test_erasure_inflation_reproduces[reference]",
+      "nodeid": "properties/test_taxonomy.py::test_erasure_inflation_reproduces[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "",
+      "extra": "traces-replay",
+      "name": "test_every_committed_trace_replays_identically",
+      "nodeid": "properties/test_traces.py::test_every_committed_trace_replays_identically",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The same check the links gate makes, from inside the suite.",
+      "name": "test_every_link_resolves",
+      "nodeid": "properties/test_skill.py::test_every_link_resolves",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "",
+      "name": "test_every_make_target_it_names_exists",
+      "nodeid": "properties/test_skill.py::test_every_make_target_it_names_exists",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The 26 numbered checks map one-to-one onto marked test functions.",
+      "name": "test_every_spec_check_has_exactly_one_test",
+      "nodeid": "properties/test_spec_coverage.py::test_every_spec_check_has_exactly_one_test",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "``amr`` grew from eight subcommands to nine once; it can grow again.",
+      "name": "test_every_subcommand_it_names_exists",
+      "nodeid": "properties/test_skill.py::test_every_subcommand_it_names_exists",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "``results/extras/<date>/``: the date is still there, one level further down.",
+      "name": "test_extras_runs_are_dated_inside_their_own_directory",
+      "nodeid": "properties/test_results_layout.py::test_extras_runs_are_dated_inside_their_own_directory",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "I3.2: `x` does not appear in `list_scope`, under each declared mode.",
+      "extra": "forget-removes-from-its-own-scope",
+      "name": "test_forget_removes_the_record_from_its_own_scope_under_every_mode[reference]",
+      "nodeid": "properties/test_p3_forget.py::test_forget_removes_the_record_from_its_own_scope_under_every_mode[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Control: with no descendants, all declared modes agree.",
+      "extra": "forget-control-no-descendants",
+      "name": "test_forget_without_descendants_is_mode_independent[reference]",
+      "nodeid": "properties/test_p3_forget.py::test_forget_without_descendants_is_mode_independent[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "``notes`` is outside SPEC.md 8, so it is the one key that may be absent.",
+      "name": "test_from_dict_accepts_notes_and_nothing_else_optional",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_accepts_notes_and_nothing_else_optional",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A typo in a published declaration is an error, not a field nobody reads.",
+      "name": "test_from_dict_rejects_an_unknown_field_by_name",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_rejects_an_unknown_field_by_name",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[cross_scope_derivation]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[cross_scope_derivation]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[default_forget_mode]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[default_forget_mode]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[durability]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[durability]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[empty_chain_convention]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[empty_chain_convention]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[revision]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[revision]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[revision_raise_supported]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[revision_raise_supported]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[scopes]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[scopes]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[supported_forget_modes]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[supported_forget_modes]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[system]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[system]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A checker that cannot read a field reports the declaration invalid (SPEC.md 8).",
+      "name": "test_from_dict_requires_every_spec_field[version]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_requires_every_spec_field[version]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Every registered system's declaration survives the JSON shape and back.",
+      "name": "test_from_dict_round_trips_a_declaration[reference]",
+      "nodeid": "properties/test_capabilities.py::test_from_dict_round_trips_a_declaration[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The one field the wrapper changes, and the reference it did not change.",
+      "extra": "persistent-declares-durable",
+      "name": "test_it_declares_durable_and_the_reference_still_declares_round_trip",
+      "nodeid": "properties/test_persistent_system.py::test_it_declares_durable_and_the_reference_still_declares_round_trip",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[% of checks]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[% of checks]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[anthropic]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[anthropic]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[conformance score]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[conformance score]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[langchain]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[langchain]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[next quarter]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[next quarter]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[openai]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[openai]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[out of 26]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[out of 26]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[overall score]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[overall score]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[roadmap]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[roadmap]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[score of]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[score of]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A score the suite does not compute is the easiest thing for a skill to invent.",
+      "name": "test_it_does_not_say_what_it_must_not_say[the-former-name]",
+      "nodeid": "properties/test_skill.py::test_it_does_not_say_what_it_must_not_say[the-former-name]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The guardrail, read off the commands rather than off the prose promising it.",
+      "name": "test_it_sends_every_run_to_the_scratch_directory",
+      "nodeid": "properties/test_skill.py::test_it_sends_every_run_to_the_scratch_directory",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "PASS, FAIL, DIVERGENCE, and the two things a reader gets wrong without being told.",
+      "name": "test_it_states_the_three_outcomes_and_no_score",
+      "nodeid": "properties/test_skill.py::test_it_states_the_three_outcomes_and_no_score",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A snapshot from outside is something to validate, not something to adopt.",
+      "extra": "persistent-detached-load",
+      "name": "test_loading_a_foreign_snapshot_does_not_touch_the_live_store",
+      "nodeid": "properties/test_persistent_system.py::test_loading_a_foreign_snapshot_does_not_touch_the_live_store",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Ten fixed-seed random DAGs agree with effective_confidence_reference.",
+      "extra": "reference-arithmetic-agreement",
+      "name": "test_matches_reference_arithmetic_on_random_dags[reference]",
+      "nodeid": "properties/test_p2_confidence.py::test_matches_reference_arithmetic_on_random_dags[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "",
+      "extra": "selection-unknown-name-is-an-error",
+      "name": "test_naming_a_system_that_does_not_exist_says_what_does",
+      "nodeid": "properties/test_registry.py::test_naming_a_system_that_does_not_exist_says_what_does",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The failure a reader hits first, and the one that used to look like absence.",
+      "extra": "selection-missing-dependency-names-the-extra",
+      "name": "test_naming_a_system_whose_dependency_is_missing_says_how_to_install_it",
+      "nodeid": "properties/test_registry.py::test_naming_a_system_whose_dependency_is_missing_says_how_to_install_it",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "SPEC.md 3.1's `NotFound` signal has a type a caller can catch by name.",
+      "extra": "not-found-is-a-named-type",
+      "name": "test_not_found_is_raised_as_a_named_type[reference]",
+      "nodeid": "properties/test_p4_isolation.py::test_not_found_is_raised_as_a_named_type[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[cross_scope_derivation]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[cross_scope_derivation]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[durability]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[durability]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[empty_chain_convention]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[empty_chain_convention]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[revision]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[revision]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[revision_raise_supported]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[revision_raise_supported]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "An omitted field is not a default (SPEC.md 8): it does not construct at all.",
+      "name": "test_omitting_a_declared_field_is_a_construction_error[scopes]",
+      "nodeid": "properties/test_capabilities.py::test_omitting_a_declared_field_is_a_construction_error[scopes]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "taxonomy/orphaned-derivative.md: every mode leaves a defined derivative.",
+      "extra": "taxonomy-orphaned-derivative",
+      "name": "test_orphaned_derivative_is_handled[reference]",
+      "nodeid": "properties/test_taxonomy.py::test_orphaned_derivative_is_handled[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Reopen is only useful if it is a no-op on everything observable.",
+      "extra": "persistent-reopen-changes-nothing",
+      "name": "test_reopening_leaves_every_answer_where_it_was",
+      "nodeid": "properties/test_persistent_system.py::test_reopening_leaves_every_answer_where_it_was",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "taxonomy/silent-chain-truncation.md: strict writes reject the truncation.",
+      "extra": "taxonomy-silent-chain-truncation",
+      "name": "test_silent_chain_truncation_is_handled[reference]",
+      "nodeid": "properties/test_taxonomy.py::test_silent_chain_truncation_is_handled[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A taxonomy entry embeds the exact source of the module the suite runs.",
+      "name": "test_taxonomy_entry_embeds_its_reproduction[erasure-inflation]",
+      "nodeid": "properties/test_taxonomy.py::test_taxonomy_entry_embeds_its_reproduction[erasure-inflation]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A taxonomy entry embeds the exact source of the module the suite runs.",
+      "name": "test_taxonomy_entry_embeds_its_reproduction[orphaned-derivative]",
+      "nodeid": "properties/test_taxonomy.py::test_taxonomy_entry_embeds_its_reproduction[orphaned-derivative]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A taxonomy entry embeds the exact source of the module the suite runs.",
+      "name": "test_taxonomy_entry_embeds_its_reproduction[silent-chain-truncation]",
+      "nodeid": "properties/test_taxonomy.py::test_taxonomy_entry_embeds_its_reproduction[silent-chain-truncation]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A taxonomy entry embeds the exact source of the module the suite runs.",
+      "name": "test_taxonomy_entry_embeds_its_reproduction[undeclared-derivation]",
+      "nodeid": "properties/test_taxonomy.py::test_taxonomy_entry_embeds_its_reproduction[undeclared-derivation]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A check id is readable from the test name: P2.5 -> test_p2_5_...",
+      "name": "test_test_names_follow_their_check_id",
+      "nodeid": "properties/test_spec_coverage.py::test_test_names_follow_their_check_id",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The fixture above is the \u00a78 key set exactly, so the omission test is exhaustive.",
+      "name": "test_the_complete_declaration_names_every_spec_field",
+      "nodeid": "properties/test_capabilities.py::test_the_complete_declaration_names_every_spec_field",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Two files, two commands, one rule about which directories are published.",
+      "name": "test_the_contamination_record_is_filtered_the_same_way",
+      "nodeid": "properties/test_results_layout.py::test_the_contamination_record_is_filtered_the_same_way",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A description is how the skill gets chosen, so it carries both halves.",
+      "name": "test_the_description_says_what_it_does_and_when_to_use_it",
+      "nodeid": "properties/test_skill.py::test_the_description_says_what_it_does_and_when_to_use_it",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Every numbered check is reported, and the red ones are the declared three.",
+      "extra": "external-adapter-matrix",
+      "name": "test_the_example_fails_exactly_what_its_declaration_predicts",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_example_fails_exactly_what_its_declaration_predicts",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "No edit to this repository names the example: the entry point is the whole link.",
+      "extra": "external-adapter-discovered",
+      "name": "test_the_example_is_discovered_by_its_entry_point_alone",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_example_is_discovered_by_its_entry_point_alone",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A mode it did not declare does not become a check it is excused from.",
+      "extra": "external-adapter-skips-are-failures",
+      "name": "test_the_examples_skipped_reproductions_are_counted_as_failures",
+      "nodeid": "properties/test_external_adapter_example.py::test_the_examples_skipped_reproductions_are_counted_as_failures",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The name is the handle it is invoked by, and it is the directory's name.",
+      "name": "test_the_frontmatter_parses_and_names_its_directory",
+      "nodeid": "properties/test_skill.py::test_the_frontmatter_parses_and_names_its_directory",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A one-mode column beside a three-mode column, compared at the mode they share.",
+      "name": "test_the_mode_is_one_both_systems_declare",
+      "nodeid": "properties/test_pair_report.py::test_the_mode_is_one_both_systems_declare",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The control: dates sort by name, so the newest name is the newest run.",
+      "name": "test_the_newest_dated_directory_wins",
+      "nodeid": "properties/test_results_layout.py::test_the_newest_dated_directory_wins",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "``None`` and not an exception, and the same date filter one level down.",
+      "name": "test_the_newest_extras_run_is_found_and_an_absent_one_is_not_an_error",
+      "nodeid": "properties/test_results_layout.py::test_the_newest_extras_run_is_found_and_an_absent_one_is_not_an_error",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The README's Python example is the file, and its transcript is the run.",
+      "name": "test_the_readme_embeds_use_it_and_its_output",
+      "nodeid": "properties/test_examples.py::test_the_readme_embeds_use_it_and_its_output",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A wrapper that changed any answer would show up here as a cell, not a stack trace.",
+      "extra": "persistent-suite-has-no-failures",
+      "name": "test_the_sqlite_system_passes_every_check_in_every_mode",
+      "nodeid": "properties/test_persistent_system.py::test_the_sqlite_system_passes_every_check_in_every_mode",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The columns are the two systems, named by the document and not by this file.",
+      "name": "test_the_table_is_one_row_per_check_with_a_column_per_system",
+      "nodeid": "properties/test_pair_report.py::test_the_table_is_one_row_per_check_with_a_column_per_system",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "Which pair the table is about is the table's business, not ``amr``'s.",
+      "name": "test_the_two_systems_are_read_off_the_table",
+      "nodeid": "properties/test_pair_report.py::test_the_two_systems_are_read_off_the_table",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "The gate, over the committed tree, from inside the suite.",
+      "name": "test_this_repository_renders_its_own_comparison",
+      "nodeid": "properties/test_pair_report.py::test_this_repository_renders_its_own_comparison",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "taxonomy/undeclared-derivation.md: no check at this boundary can catch it.",
+      "extra": "taxonomy-undeclared-derivation",
+      "name": "test_undeclared_derivation_is_out_of_scope[reference]",
+      "nodeid": "properties/test_taxonomy.py::test_undeclared_derivation_is_out_of_scope[reference]",
+      "outcome": "PASS"
+    },
+    {
+      "detail": "A declared 0.95 reads 0.40, and the forget comes back as a receipt.",
+      "extra": "example-use-it",
+      "name": "test_use_it_prints_the_bound_and_the_receipt",
+      "nodeid": "properties/test_examples.py::test_use_it_prints_the_bound_and_the_receipt",
+      "outcome": "PASS"
+    }
+  ],
+  "totals": {
+    "DIVERGENCE": 1,
+    "FAIL": 0,
+    "PASS": 171,
+    "tests": 172
+  }
+}
