@@ -28,7 +28,7 @@ only target that writes the record.
 
 A twelfth gate exists and is not in this command. `.github/check_example_adapter.py` asserts that
 a real `pip install -e examples/external-adapter` is discovered by its entry point and fails
-exactly the five checks its declaration predicts; it needs an index, and `release-check`'s
+exactly the three checks its declaration predicts; it needs an index, and `release-check`'s
 contract is that it runs offline. It runs as the `examples` job in CI, which step 9 covers.
 
 ## 2. The results are regenerated from the tree being tagged
