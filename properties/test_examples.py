@@ -17,12 +17,12 @@ import pytest
 from amr.paths import repo_root
 
 ERASURE_INFLATION = """\
-effective(plan), ticket present    0.40
-effective(plan), ticket tombstoned 0.40
-effective(plan), ticket erased     0.90
+effective(summary), note present    0.40
+effective(summary), note tombstoned 0.40
+effective(summary), note erased     0.95
 
-The plan was never revised. Erasing its weakest ancestor left min() with an
-empty chain, which is 1.0, so the plan rose from 0.40 to 0.90.
+The summary was never revised. Erasing its weakest ancestor left min() with an
+empty chain, which is 1.0, so the summary rose from 0.40 to 0.95.
 """
 
 USE_IT = """\
