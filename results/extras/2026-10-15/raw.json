@@ -1,12 +1,12 @@
 {
   "environment": {
-    "git_sha": "af5ea7a6c1ac03e8c8a7ab43040d0861f5aa9254-dirty",
+    "git_sha": "2ee30b349d2551a94eac8fbabe76abb3eb6378f8",
     "platform": "darwin",
     "pytest_version": "9.1.1",
     "python_implementation": "CPython",
     "python_version": "3.14.6"
   },
-  "generated_at": "2026-10-04T20:47:32+00:00",
+  "generated_at": "2026-10-15T23:20:47+00:00",
   "missing_checks": [],
   "runs": [
     {
@@ -709,7 +709,7 @@
         },
         {
           "check": "P1.5",
-          "detail": "+ where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10b069f20>, Reopenable)",
+          "detail": "+ where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10bc7df20>, Reopenable)",
           "name": "test_p1_5_walk_after_store_reopen[langgraph-store-tombstone]",
           "nodeid": "properties/test_p1_provenance.py::test_p1_5_walk_after_store_reopen[langgraph-store-tombstone]",
           "outcome": "FAIL"
@@ -723,7 +723,7 @@
         },
         {
           "check": "P1.7",
-          "detail": "+ where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10b0c5850>, Reopenable)",
+          "detail": "+ where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10bcd9850>, Reopenable)",
           "name": "test_p1_7_cyclic_snapshot_rejected[langgraph-store-tombstone]",
           "nodeid": "properties/test_p1_provenance.py::test_p1_7_cyclic_snapshot_rejected[langgraph-store-tombstone]",
           "outcome": "FAIL"

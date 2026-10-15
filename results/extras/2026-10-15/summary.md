@@ -1,6 +1,6 @@
 # Conformance results
 
-Generated 2026-10-04T20:47:32+00:00 · schema 0.1 · commit `af5ea7a6c1ac03e8c8a7ab43040d0861f5aa9254-dirty` · Python 3.14.6 on darwin · pytest 9.1.1.
+Generated 2026-10-15T23:20:47+00:00 · schema 0.1 · commit `2ee30b349d2551a94eac8fbabe76abb3eb6378f8` · Python 3.14.6 on darwin · pytest 9.1.1.
 
 387 tests: 349 PASS, 35 FAIL, 3 DIVERGENCE.
 
@@ -144,9 +144,9 @@ Beyond the numbered checks: 62 supplementary checks (mode-independent properties
 - `P1.2` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: provenance is not provided by this store: it stores documents under a namespace and a key and computes nothing…
 - `P1.3` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: provenance is not provided by this store: it stores documents under a namespace and a key and computes nothing…
 - `P1.4` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: forget is not provided by this store: it stores documents under a namespace and a key and computes nothing ove…
-- `P1.5` under `tombstone` — + where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10b069f20>, Reopenable)
+- `P1.5` under `tombstone` — + where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10bc7df20>, Reopenable)
 - `P1.6` under `tombstone` — Failed: DID NOT RAISE UnresolvedSourceError
-- `P1.7` under `tombstone` — + where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10b0c5850>, Reopenable)
+- `P1.7` under `tombstone` — + where False = isinstance(<systems.langgraph_store.store_alone.StoreAlone object at 0x10bcd9850>, Reopenable)
 - `P2.1` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: effective_confidence is not provided by this store: it stores documents under a namespace and a key and comput…
 - `P2.2` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: effective_confidence is not provided by this store: it stores documents under a namespace and a key and comput…
 - `P2.3` under `tombstone` — systems.langgraph_store.store_alone.NotProvided: effective_confidence is not provided by this store: it stores documents under a namespace and a key and comput…

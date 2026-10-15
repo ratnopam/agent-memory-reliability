@@ -1,0 +1,113 @@
+{
+  "arms": {
+    "gated": {
+      "arm": "gated",
+      "denominator": 180,
+      "gated": true,
+      "inflated_count": 0,
+      "inflated_fraction": 0.0,
+      "inherited_count": 0,
+      "inherited_fraction": 0.0,
+      "max_chain_depth": 0,
+      "surfaced": false,
+      "totals": {
+        "abstentions": 0,
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 23,
+        "writes": 180
+      }
+    },
+    "surfaced": {
+      "arm": "surfaced",
+      "denominator": 180,
+      "gated": false,
+      "inflated_count": 8,
+      "inflated_fraction": 0.0444,
+      "inherited_count": 9,
+      "inherited_fraction": 0.05,
+      "max_chain_depth": 3,
+      "surfaced": true,
+      "totals": {
+        "abstentions": 0,
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 27,
+        "writes": 180
+      }
+    },
+    "ungated": {
+      "arm": "ungated",
+      "denominator": 180,
+      "gated": false,
+      "inflated_count": 44,
+      "inflated_fraction": 0.2444,
+      "inherited_count": 87,
+      "inherited_fraction": 0.4833,
+      "max_chain_depth": 9,
+      "surfaced": false,
+      "totals": {
+        "abstentions": 0,
+        "reads": 720,
+        "rounds": 60,
+        "strict_write_rejections": 21,
+        "writes": 180
+      }
+    }
+  },
+  "environment": {
+    "git_sha": "c5551f69e93ab6b01ef1026b47dc73291a4221c9",
+    "platform": "darwin",
+    "pytest_version": "9.1.1",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "forget_mode": "tombstone",
+  "parameters": {
+    "citation_sizes": [
+      1,
+      1,
+      2
+    ],
+    "confidence_choices": [
+      0.95,
+      0.9,
+      0.85,
+      0.7,
+      0.6
+    ],
+    "confidence_weights": [
+      3,
+      3,
+      2,
+      1,
+      1
+    ],
+    "confident_declared_floor": 0.9,
+    "hallucinated_citation_rate": 0.1,
+    "injected": {
+      "high": {
+        "content": "p99 SLO is 250ms",
+        "declared": 0.95,
+        "origin": "runbook"
+      },
+      "low": {
+        "content": "p99 SLO is 400ms",
+        "declared": 0.4,
+        "origin": "chat"
+      }
+    },
+    "read_sample": 4,
+    "roles": [
+      "support-triage",
+      "sre",
+      "platform"
+    ],
+    "rounds": 60,
+    "tau": 0.5
+  },
+  "scenario": "contamination",
+  "schema": "0.1",
+  "seed": 7,
+  "system": "reference"
+}
