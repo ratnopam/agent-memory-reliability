@@ -163,7 +163,10 @@ re-runs the session and compares every value it recorded.
 **From Claude Code**, ask it to run the suite:
 [.claude/skills/conformance-run/SKILL.md](.claude/skills/conformance-run/SKILL.md) is a skill that
 measures a declared system into a scratch directory and explains the matrix it got, including what
-each FAIL requires and which capability field it follows from.
+each FAIL requires and which capability field it follows from. There is nothing to install: the
+skill is committed here, so it loads when Claude Code opens a clone of this repository, and it is
+scoped to one — its commands run `amr` out of the checkout and it reads the specification by
+relative path, so a copy of the file on its own would measure nothing.
 
 **From Python**, in full — this is [examples/use_it.py](examples/use_it.py) verbatim:
 
