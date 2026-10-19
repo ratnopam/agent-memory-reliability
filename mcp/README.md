@@ -9,6 +9,7 @@ conformance suite can see it.
 ## Running it
 
 ```
+source .venv/bin/activate
 python -m pip install -e ".[mcp]"
 python mcp/server.py
 ```
@@ -25,13 +26,20 @@ As a client entry — for Claude Desktop, Claude Code, or anything else that spe
 {
   "mcpServers": {
     "agent-memory": {
-      "command": "python",
+      "command": "/absolute/path/to/agent-memory-reliability/.venv/bin/python",
       "args": ["/absolute/path/to/agent-memory-reliability/mcp/server.py"],
       "env": {"AMR_FORGET_MODE": "tombstone"}
     }
   }
 }
 ```
+
+Both paths are absolute, and `command` is the interpreter the `[mcp]` extra was installed into
+rather than a bare `python`. A client launched from the desktop does not inherit your shell, so
+`python` is usually not on its path at all — and on macOS, where only `python3` exists, it never
+is. An interpreter that is not the virtual environment's would start and then fail to import
+`mcp`. [docs/try-it-with-claude.md](../docs/try-it-with-claude.md) is the same entry written as a
+guided run.
 
 State is in-process and lives as long as the server does. Nothing is written to disk, and a
 restart is an empty store. That is deliberate for a reference server: durability is a
