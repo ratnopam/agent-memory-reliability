@@ -136,7 +136,7 @@ Python 3.11+ and pip. `pytest` is the only dependency; nothing is vendored, no m
 | `make demo` | the declaration, the matrix and the divergence in fifteen lines |
 | `make determinism` | everything twice in fresh subprocesses, compared byte for byte |
 | `make contamination` | the three-arm simulation; same seed, same bytes |
-| `make extras` | the optional adapters as well, into `results/extras/<date>/` |
+| `make extras` | the optional adapters as well, into `results/extras/<date>/` — exits non-zero, see below |
 | `make extras-test` | the supplementary tests for those adapters |
 | `make mcp-test` | the MCP server over real stdio |
 | `make release-check` | all eleven gates, one line each — run before a tag |
@@ -147,7 +147,12 @@ Every target wraps the `amr` command line, which is the real interface:
 
 The matrix above is the **default** run. An adapter with an optional dependency is an **extra**,
 measured only when you name it (`SYSTEMS=sqlite python -m amr reproduce`) or run `make extras`,
-which writes `results/extras/<date>/` and can never move the published table.
+which writes `results/extras/<date>/` and can never move the published table. `make extras` ends
+in `Error 1` and that is the expected result, not a broken checkout: a run exits non-zero when any
+check FAILed, and the extras include a store measured bare, where twenty-five of twenty-six
+operations are ones it does not provide — [the second table below](#store-alone-and-with-the-layer)
+is that exit code written out. `make test` and `make reproduce` exit zero; a DIVERGENCE never
+fails a run.
 [results/README.md](results/README.md) is the schema and the determinism rule;
 [docs/RELEASE.md](docs/RELEASE.md) is the gate-by-gate release checklist.
 
