@@ -62,8 +62,8 @@ is what makes the results usable as evidence. Also, less philosophically: anythi
 make release-check
 ```
 
-Ten gates, one line each: the suite, the results, determinism, the simulation, lint, the
+Eleven gates, one line each: the suite, the results, determinism, the simulation, lint, the
 standard-library gate over the reference, the model-import grep, the naming grep, the README
-matrix, and the documentation links. Green here is what CI checks too, so a red gate locally is
-a red build later. If a gate is red for a reason you think is wrong, open the pull request
-anyway and say which one — that is feedback, and it is path 2.
+matrix, the documentation links, and the architecture diagram's facts. Green here is what CI
+checks too, so a red gate locally is a red build later. If a gate is red for a reason you think
+is wrong, open the pull request anyway and say which one — that is feedback, and it is path 2.
